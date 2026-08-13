@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>不規則スプライトシート整形ツール</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>不規則スプライトシート整形ツール</h1>
+      <p>自動認識 → フレーム調整 → 足元揃え → アニメーション確認 → PNG出力</p>
+    </div>
+    <label class="file-btn">画像を開く<input id="fileInput" type="file" accept="image/png,image/webp,image/jpeg" /></label>
+  </header>
+
+  <main class="workspace">
+    <section class="panel source-panel">
+      <div class="panel-head">
+        <h2>1. 元画像・自動認識</h2>
+        <div class="row compact">
+          <button id="detectBtn" disabled>自動認識</button>
+          <button id="clearBtn" disabled>認識解除</button>
+        </div>
+      </div>
+      <div class="controls-grid">
+        <label>透明判定 α <input id="alphaThreshold" type="range" min="1" max="254" value="16"><span id="alphaValue">16</span></label>
+        <label>最小領域 <input id="minArea" type="number" min="1" value="24"></label>
+        <label>部品結合距離 <input id="mergeDistance" type="number" min="0" value="18"></label>
+        <label>余白 <input id="boxPadding" type="number" min="0" value="2"></label>
+      </div>
+      <div class="canvas-wrap checker source-wrap">
+        <canvas id="sourceCanvas"></canvas>
+      </div>
+      <div class="hint">青枠＝認識フレーム。クリックで選択、ドラッグで移動。四隅ハンドルで範囲調整。Shift+ドラッグで新規範囲。</div>
+    </section>
+
+    <section class="panel frames-panel">
+      <div class="panel-head">
+        <h2>2. フレーム編集</h2>
+        <div class="row compact">
+          <button id="sortBtn" disabled>左→右 / 上→下</button>
+          <button id="deleteBtn" disabled>選択削除</button>
+        </div>
+      </div>
+      <div class="row controls-wide">
+        <label><input id="autoFeet" type="checkbox" checked> 足元を自動揃え</label>
+        <label>足元補正 <input id="footOffset" type="number" value="0"></label>
+        <label>左右余白 <input id="padX" type="number" min="0" value="8"></label>
+        <label>上下余白 <input id="padY" type="number" min="0" value="8"></label>
+      </div>
+      <div id="frameList" class="frame-list"></div>
+    </section>
+
+    <section class="panel preview-panel">
+      <div class="panel-head">
+        <h2>3. アニメーション・出力</h2>
+        <div class="row compact">
+          <button id="playBtn" disabled>▶ 再生</button>
+          <button id="stopBtn" disabled>■ 停止</button>
+        </div>
+      </div>
+      <div class="preview-area checker">
+        <canvas id="previewCanvas" width="420" height="420"></canvas>
+      </div>
+      <div class="controls-grid preview-controls">
+        <label>FPS <input id="fps" type="number" min="1" max="60" value="8"></label>
+        <label>開始 <input id="startFrame" type="number" min="1" value="1"></label>
+        <label>終了 <input id="endFrame" type="number" min="1" value="1"></label>
+        <label>表示倍率 <input id="previewScale" type="number" min="0.1" step="0.1" value="2"></label>
+      </div>
+      <hr>
+      <div class="controls-grid preview-controls">
+        <label>固定セル幅 <input id="cellW" type="number" min="0" value="0"><small>0=自動</small></label>
+        <label>固定セル高 <input id="cellH" type="number" min="0" value="0"><small>0=自動</small></label>
+        <label>列数 <input id="columns" type="number" min="1" value="8"></label>
+        <label>出力倍率 <input id="exportScale" type="number" min="0.1" step="0.1" value="1"></label>
+      </div>
+      <div class="row export-row">
+        <button id="exportSheetBtn" disabled>スプライトシートPNG出力</button>
+        <button id="exportFramesBtn" disabled>個別PNG出力</button>
+      </div>
+      <div id="status" class="status">画像を読み込んでください。</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
