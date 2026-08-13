@@ -7,29 +7,22 @@ namespace ActGame;
 
 public sealed class Game1 : Game
 {
-    private enum GameScreen
-    {
-        PlayerSelect,
-        Playing
-    }
-
-    private enum PlayerCharacter
-    {
-        PinkFighter,
-        BlondeSwordswoman
-    }
+    private enum GameScreen { PlayerSelect, Playing }
+    private enum PlayerCharacter { PinkFighter, BlondeSwordswoman }
 
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
     private Texture2D _heroineSprite = null!;
     private Texture2D _swordswomanSprite = null!;
+    private Texture2D _enemySprite = null!;
     private readonly Player _player = new();
     private readonly List<Enemy> _enemies = new();
 
     private const float GroundY = 620f;
     private const int FighterCell = 48;
-    private const int SwordswomanCell = 48;
+    private const int SwordswomanColumns = 4;
+    private const int SwordswomanRows = 4;
 
     private GameScreen _screen = GameScreen.PlayerSelect;
     private PlayerCharacter _selectedCharacter = PlayerCharacter.PinkFighter;
@@ -38,11 +31,7 @@ public sealed class Game1 : Game
 
     public Game1()
     {
-        _graphics = new GraphicsDeviceManager(this)
-        {
-            PreferredBackBufferWidth = 1280,
-            PreferredBackBufferHeight = 720
-        };
+        _graphics = new GraphicsDeviceManager(this) { PreferredBackBufferWidth = 1280, PreferredBackBufferHeight = 720 };
         IsMouseVisible = true;
         Window.Title = "ActGame - PLAYER SELECT: Left/Right, Enter to start";
     }
@@ -61,16 +50,17 @@ public sealed class Game1 : Game
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
 
-        var fighterPath = Path.Combine(AppContext.BaseDirectory, "Content", "Player", "heroine_game_sheet.png");
-        using (var stream = File.OpenRead(fighterPath))
-            _heroineSprite = Texture2D.FromStream(GraphicsDevice, stream);
+        _heroineSprite = LoadPng(Path.Combine("Content", "Player", "heroine_game_sheet.png"));
+        // Keep 002_swordswoman.png exactly as committed. It is cropped only by source rectangles at draw time.
+        _swordswomanSprite = LoadPng(Path.Combine("Content", "Player", "002_swordswoman.png"));
+        _enemySprite = LoadPng(Path.Combine("Content", "Enemies", "blonde_swordswoman.png"));
+    }
 
-        // This asset is now treated as the blonde swordswoman's player sprite sheet,
-        // not as a generic player skin. The current repository asset contains
-        // dedicated idle/run/jump/sword-attack rows derived from the original sheet.
-        var swordswomanPath = Path.Combine(AppContext.BaseDirectory, "Content", "Enemies", "blonde_swordswoman.png");
-        using (var stream = File.OpenRead(swordswomanPath))
-            _swordswomanSprite = Texture2D.FromStream(GraphicsDevice, stream);
+    private Texture2D LoadPng(string relativePath)
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, relativePath);
+        using var stream = File.OpenRead(path);
+        return Texture2D.FromStream(GraphicsDevice, stream);
     }
 
     protected override void Update(GameTime gameTime)
@@ -96,7 +86,6 @@ public sealed class Game1 : Game
         }
 
         _player.Update(gameTime, GroundY);
-
         foreach (var enemy in _enemies)
         {
             enemy.Update(gameTime, _player.Body.Position);
@@ -110,77 +99,58 @@ public sealed class Game1 : Game
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
-        _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-
-        if (_screen == GameScreen.PlayerSelect)
-            DrawPlayerSelect();
-        else
-            DrawGame();
-
+        _spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
+        if (_screen == GameScreen.PlayerSelect) DrawPlayerSelect(); else DrawGame();
         _spriteBatch.End();
         base.Draw(gameTime);
     }
 
     private void UpdatePlayerSelect(KeyboardState keyboard)
     {
-        if (IsNewKeyPress(keyboard, Keys.Left) || IsNewKeyPress(keyboard, Keys.A))
-            _selectedCharacter = PlayerCharacter.PinkFighter;
-
-        if (IsNewKeyPress(keyboard, Keys.Right) || IsNewKeyPress(keyboard, Keys.D))
-            _selectedCharacter = PlayerCharacter.BlondeSwordswoman;
+        if (IsNewKeyPress(keyboard, Keys.Left) || IsNewKeyPress(keyboard, Keys.A)) _selectedCharacter = PlayerCharacter.PinkFighter;
+        if (IsNewKeyPress(keyboard, Keys.Right) || IsNewKeyPress(keyboard, Keys.D)) _selectedCharacter = PlayerCharacter.BlondeSwordswoman;
 
         if (IsNewKeyPress(keyboard, Keys.Enter) || IsNewKeyPress(keyboard, Keys.Space))
         {
-            _player.ConfigureCharacter(
-                _selectedCharacter == PlayerCharacter.BlondeSwordswoman
-                    ? PlayerCombatStyle.Swordswoman
-                    : PlayerCombatStyle.MartialArtist);
-
+            _player.ConfigureCharacter(_selectedCharacter == PlayerCharacter.BlondeSwordswoman ? PlayerCombatStyle.Swordswoman : PlayerCombatStyle.MartialArtist);
             _screen = GameScreen.Playing;
             _animationTime = 0;
-            Window.Title = _selectedCharacter == PlayerCharacter.PinkFighter
-                ? "ActGame - Pink Fighter - J: Kick"
-                : "ActGame - Blonde Swordswoman - J: Sword Attack";
+            Window.Title = _selectedCharacter == PlayerCharacter.PinkFighter ? "ActGame - Pink Fighter - J: Kick" : "ActGame - Blonde Swordswoman - J: Sword Attack";
         }
-        else if (IsNewKeyPress(keyboard, Keys.Escape))
-        {
-            Exit();
-        }
-        else
-        {
-            Window.Title = BuildSelectTitle();
-        }
+        else if (IsNewKeyPress(keyboard, Keys.Escape)) Exit();
+        else Window.Title = BuildSelectTitle();
     }
 
     private string BuildSelectTitle()
     {
-        var name = _selectedCharacter == PlayerCharacter.PinkFighter
-            ? "Pink Fighter"
-            : "Blonde Swordswoman";
-
+        var name = _selectedCharacter == PlayerCharacter.PinkFighter ? "Pink Fighter" : "Blonde Swordswoman";
         return $"ActGame - PLAYER SELECT: {name}  [Left/Right] Select  [Enter] Start";
+    }
+
+    private Rectangle SwordswomanSource(int column, int row)
+    {
+        // 828x724 is not evenly divisible by 4. Calculate every boundary from the real texture size
+        // so no pixels are discarded and the source PNG itself never needs to be edited.
+        var x0 = column * _swordswomanSprite.Width / SwordswomanColumns;
+        var x1 = (column + 1) * _swordswomanSprite.Width / SwordswomanColumns;
+        var y0 = row * _swordswomanSprite.Height / SwordswomanRows;
+        var y1 = (row + 1) * _swordswomanSprite.Height / SwordswomanRows;
+        return new Rectangle(x0, y0, x1 - x0, y1 - y0);
     }
 
     private void DrawPlayerSelect()
     {
         _spriteBatch.Draw(_pixel, new Rectangle(0, 0, 1280, 720), new Color(20, 28, 48));
-
         var leftCard = new Rectangle(250, 150, 330, 430);
         var rightCard = new Rectangle(700, 150, 330, 430);
-
         DrawSelectCard(leftCard, _selectedCharacter == PlayerCharacter.PinkFighter);
         DrawSelectCard(rightCard, _selectedCharacter == PlayerCharacter.BlondeSwordswoman);
 
         var fighterFrame = (int)(_animationTime * 4.0) % 4;
-        var fighterSource = new Rectangle(fighterFrame * FighterCell, 0, FighterCell, FighterCell);
-        var fighterDest = new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300);
-        _spriteBatch.Draw(_heroineSprite, fighterDest, fighterSource, Color.White);
+        _spriteBatch.Draw(_heroineSprite, new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300), new Rectangle(fighterFrame * FighterCell, 0, FighterCell, FighterCell), Color.White);
 
         var swordFrame = (int)(_animationTime * 4.0) % 4;
-        var swordSource = new Rectangle(swordFrame * SwordswomanCell, 0, SwordswomanCell, SwordswomanCell);
-        var swordDest = new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315);
-        _spriteBatch.Draw(_swordswomanSprite, swordDest, swordSource, Color.White);
-
+        _spriteBatch.Draw(_swordswomanSprite, new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315), SwordswomanSource(swordFrame, 0), Color.White);
         DrawArrow(new Vector2(170, 365), false);
         DrawArrow(new Vector2(1110, 365), true);
     }
@@ -188,12 +158,8 @@ public sealed class Game1 : Game
     private void DrawSelectCard(Rectangle card, bool selected)
     {
         var border = selected ? 8 : 3;
-        var borderColor = selected ? Color.Gold : Color.SlateGray;
-        var fillColor = selected ? new Color(52, 62, 92) : new Color(36, 43, 65);
-
-        _spriteBatch.Draw(_pixel, card, borderColor);
-        var inner = new Rectangle(card.X + border, card.Y + border, card.Width - border * 2, card.Height - border * 2);
-        _spriteBatch.Draw(_pixel, inner, fillColor);
+        _spriteBatch.Draw(_pixel, card, selected ? Color.Gold : Color.SlateGray);
+        _spriteBatch.Draw(_pixel, new Rectangle(card.X + border, card.Y + border, card.Width - border * 2, card.Height - border * 2), selected ? new Color(52, 62, 92) : new Color(36, 43, 65));
     }
 
     private void DrawArrow(Vector2 center, bool right)
@@ -211,13 +177,9 @@ public sealed class Game1 : Game
     private void DrawGame()
     {
         _spriteBatch.Draw(_pixel, new Rectangle(0, (int)GroundY, 1280, 100), Color.ForestGreen);
-
         DrawPlayer();
-
         _spriteBatch.Draw(_pixel, _player.Body.CollisionBounds, Color.Pink * 0.20f);
-        if (_player.IsAttacking)
-            _spriteBatch.Draw(_pixel, _player.AttackBounds, Color.Yellow * 0.45f);
-
+        if (_player.IsAttacking) _spriteBatch.Draw(_pixel, _player.AttackBounds, Color.Yellow * 0.45f);
         foreach (var enemy in _enemies.Where(e => e.IsAlive))
         {
             DrawEnemy(enemy);
@@ -227,88 +189,28 @@ public sealed class Game1 : Game
 
     private void DrawPlayer()
     {
-        if (_selectedCharacter == PlayerCharacter.BlondeSwordswoman)
-            DrawSwordswomanPlayer();
-        else
-            DrawFighterPlayer();
+        if (_selectedCharacter == PlayerCharacter.BlondeSwordswoman) DrawSwordswomanPlayer(); else DrawFighterPlayer();
     }
 
     private void DrawFighterPlayer()
     {
-        var row = 0;
-        var fps = 4.0;
-
-        if (_player.IsAttacking)
-        {
-            row = 3;
-            fps = 12.0;
-        }
-        else if (!_player.IsGrounded)
-        {
-            row = 2;
-            fps = 7.0;
-        }
-        else if (_player.IsMoving)
-        {
-            row = 1;
-            fps = 10.0;
-        }
-
+        var row = _player.IsAttacking ? 3 : !_player.IsGrounded ? 2 : _player.IsMoving ? 1 : 0;
+        var fps = _player.IsAttacking ? 12.0 : !_player.IsGrounded ? 7.0 : _player.IsMoving ? 10.0 : 4.0;
         var frame = (int)(_animationTime * fps) % 4;
-        var source = new Rectangle(frame * FighterCell, row * FighterCell, FighterCell, FighterCell);
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
-
-        _spriteBatch.Draw(
-            _heroineSprite,
-            _player.Body.VisualBounds,
-            source,
-            Color.White,
-            0f,
-            Vector2.Zero,
-            effects,
-            0f);
+        _spriteBatch.Draw(_heroineSprite, _player.Body.VisualBounds, new Rectangle(frame * FighterCell, row * FighterCell, FighterCell, FighterCell), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
     private void DrawSwordswomanPlayer()
     {
-        var row = 0;
-        var fps = 5.0;
-
-        if (_player.IsAttacking)
-        {
-            row = 3;
-            fps = 12.0;
-        }
-        else if (!_player.IsGrounded)
-        {
-            row = 2;
-            fps = 8.0;
-        }
-        else if (_player.IsMoving)
-        {
-            row = 1;
-            fps = 10.0;
-        }
-
+        // 4x4 sheet supplied by the user: row 0 idle, row 1 run, row 2 jump/movement, row 3 sword attack.
+        var row = _player.IsAttacking ? 3 : !_player.IsGrounded ? 2 : _player.IsMoving ? 1 : 0;
+        var fps = _player.IsAttacking ? 12.0 : !_player.IsGrounded ? 8.0 : _player.IsMoving ? 10.0 : 4.0;
         var frame = (int)(_animationTime * fps) % 4;
-        var source = new Rectangle(
-            frame * SwordswomanCell,
-            row * SwordswomanCell,
-            SwordswomanCell,
-            SwordswomanCell);
-
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
-        var bounds = _player.Body.VisualBounds;
 
-        _spriteBatch.Draw(
-            _swordswomanSprite,
-            bounds,
-            source,
-            Color.White,
-            0f,
-            Vector2.Zero,
-            effects,
-            0f);
+        // Only the destination rectangle scales the original source image down to the configured character size.
+        _spriteBatch.Draw(_swordswomanSprite, _player.Body.VisualBounds, SwordswomanSource(frame, row), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
     private void DrawEnemy(Enemy enemy)
@@ -316,23 +218,9 @@ public sealed class Game1 : Game
         var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
         var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
         var frame = (int)(_animationTime * 8.0) % 4;
-        var source = new Rectangle(
-            frame * SwordswomanCell,
-            SwordswomanCell,
-            SwordswomanCell,
-            SwordswomanCell);
-
-        _spriteBatch.Draw(
-            _swordswomanSprite,
-            enemy.Body.VisualBounds,
-            source,
-            Color.White,
-            0f,
-            Vector2.Zero,
-            effects,
-            0f);
+        var cell = 48;
+        _spriteBatch.Draw(_enemySprite, enemy.Body.VisualBounds, new Rectangle(frame * cell, cell, cell, cell), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
-    private bool IsNewKeyPress(KeyboardState keyboard, Keys key) =>
-        keyboard.IsKeyDown(key) && !_previousKeyboard.IsKeyDown(key);
+    private bool IsNewKeyPress(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && !_previousKeyboard.IsKeyDown(key);
 }
