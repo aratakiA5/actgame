@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>スプライトシート正規化ツール</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111827;color:#f3f4f6;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1500px;margin:auto;padding:22px}h1{margin:0 0 6px;font-size:24px}h2{font-size:18px;margin:0 0 12px}.muted{color:#9ca3af}.panel{margin-top:14px;padding:15px;border:1px solid #374151;border-radius:12px;background:#1f2937}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:4px}.field label{font-size:12px;color:#d1d5db}.field input[type=number]{width:88px}input,button{font:inherit}input[type=file],input[type=number]{padding:7px 8px;border:1px solid #4b5563;border-radius:7px;background:#111827;color:#f3f4f6}button{padding:8px 12px;border:0;border-radius:7px;background:#2563eb;color:#fff;cursor:pointer}button.secondary{background:#4b5563}button.danger{background:#b91c1c}button:disabled{opacity:.45;cursor:not-allowed}.workspace{display:grid;grid-template-columns:minmax(0,2fr) minmax(340px,1fr);gap:14px}.canvas-wrap{overflow:auto;background:#0b1020;border-radius:9px;min-height:300px}.stage{display:inline-block;position:relative;line-height:0;user-select:none}.stage canvas{display:block;image-rendering:pixelated}.overlay{position:absolute;inset:0}.cell{position:absolute;border:1px solid rgba(255,255,255,.18);cursor:pointer}.cell:hover{background:rgba(59,130,246,.16)}.cell.selected{background:rgba(34,197,94,.20);outline:2px solid #22c55e;outline-offset:-2px}.badge{position:absolute;left:3px;top:3px;font-size:11px;line-height:1;padding:4px 6px;border-radius:999px;background:#111827}.grid-line{position:absolute;z-index:20;background:#facc15;box-shadow:0 0 0 1px rgba(0,0,0,.5)}.grid-line.v{top:0;bottom:0;width:3px;cursor:ew-resize;transform:translateX(-1px)}.grid-line.h{left:0;right:0;height:3px;cursor:ns-resize;transform:translateY(-1px)}.grid-line:hover,.grid-line.dragging{background:#fb7185}.grid16{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.slot{position:relative;aspect-ratio:1;border:1px dashed #4b5563;border-radius:7px;background:#111827;overflow:hidden;cursor:pointer}.slot.active{outline:2px solid #60a5fa}.slot canvas{display:block;width:100%;height:100%;image-rendering:pixelated}.slot .n{position:absolute;right:4px;bottom:3px;font-size:10px;color:#9ca3af}.output canvas{width:min(100%,512px);height:auto;image-rendering:pixelated;border:1px solid #4b5563;background:repeating-conic-gradient(#202938 0 25%,#151b27 0 50%) 50%/16px 16px}.status,.note{font-size:13px;color:#d1d5db;line-height:1.6}.edit-grid{display:grid;grid-template-columns:repeat(4,minmax(70px,1fr));gap:8px}.edit-grid input{width:100%}.row{display:flex;gap:8px;flex-wrap:wrap}.kbd{font-family:ui-monospace,monospace;background:#111827;border:1px solid #374151;border-radius:4px;padding:1px 5px}.ok{color:#86efac}.warn{color:#facc15}@media(max-width:930px){.workspace{grid-template-columns:1fr}.edit-grid{grid-template-columns:repeat(2,1fr)}}
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#111827;color:#f3f4f6;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1500px;margin:auto;padding:22px}h1{margin:0 0 6px;font-size:24px}h2{font-size:18px;margin:0 0 12px}.muted{color:#9ca3af}.panel{margin-top:14px;padding:15px;border:1px solid #374151;border-radius:12px;background:#1f2937}.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.field{display:grid;gap:4px}.field label{font-size:12px;color:#d1d5db}.field input[type=number]{width:88px}input,button{font:inherit}input[type=file],input[type=number]{padding:7px 8px;border:1px solid #4b5563;border-radius:7px;background:#111827;color:#f3f4f6}button{padding:8px 12px;border:0;border-radius:7px;background:#2563eb;color:#fff;cursor:pointer}button.secondary{background:#4b5563}button.danger{background:#b91c1c}button:disabled{opacity:.45;cursor:not-allowed}.workspace{display:grid;grid-template-columns:minmax(0,2fr) minmax(340px,1fr);gap:14px}.canvas-wrap{overflow:auto;background:#0b1020;border-radius:9px;min-height:300px}.stage{display:inline-block;position:relative;line-height:0;user-select:none;touch-action:none}.stage canvas{display:block;image-rendering:pixelated}.overlay{position:absolute;inset:0}.cell{position:absolute;border:1px solid rgba(255,255,255,.18);cursor:pointer}.cell:hover{background:rgba(59,130,246,.16)}.cell.selected{background:rgba(34,197,94,.20);outline:2px solid #22c55e;outline-offset:-2px}.badge{position:absolute;left:3px;top:3px;font-size:11px;line-height:1;padding:4px 6px;border-radius:999px;background:#111827}.grid-line{position:absolute;z-index:20;background:#facc15;box-shadow:0 0 0 1px rgba(0,0,0,.5);touch-action:none}.grid-line.v{top:0;bottom:0;width:5px;cursor:ew-resize;transform:translateX(-2px)}.grid-line.h{left:0;right:0;height:5px;cursor:ns-resize;transform:translateY(-2px)}.grid-line:hover,.grid-line.dragging{background:#fb7185}.grid16{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.slot{position:relative;aspect-ratio:1;border:1px dashed #4b5563;border-radius:7px;background:#111827;overflow:hidden;cursor:pointer}.slot.active{outline:2px solid #60a5fa}.slot canvas{display:block;width:100%;height:100%;image-rendering:pixelated}.slot .n{position:absolute;right:4px;bottom:3px;font-size:10px;color:#9ca3af}.output canvas{width:min(100%,512px);height:auto;image-rendering:pixelated;border:1px solid #4b5563;background:repeating-conic-gradient(#202938 0 25%,#151b27 0 50%) 50%/16px 16px}.status,.note{font-size:13px;color:#d1d5db;line-height:1.6}.edit-grid{display:grid;grid-template-columns:repeat(4,minmax(70px,1fr));gap:8px}.edit-grid input{width:100%}.row{display:flex;gap:8px;flex-wrap:wrap}.kbd{font-family:ui-monospace,monospace;background:#111827;border:1px solid #374151;border-radius:4px;padding:1px 5px}.ok{color:#86efac}.warn{color:#facc15}@media(max-width:930px){.workspace{grid-template-columns:1fr}.edit-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -26,7 +26,7 @@
 <section class="workspace">
   <section class="panel">
     <h2>1. 元画像の境界を調整して16フレームを選択</h2>
-    <div class="note"><span class="warn">黄色い縦線・横線をドラッグ</span>すると、列幅・行高を個別に変更できます。セルを出力したい順にクリックしてください。境界は1px単位でスナップします。</div>
+    <div class="note"><span class="warn">黄色い縦線・横線を押したままドラッグ</span>すると、列幅・行高を個別に変更できます。ドラッグ中は線からマウスが外れてもそのまま移動できます。セルを出力したい順にクリックしてください。</div>
     <div class="canvas-wrap"><div id="stage" class="stage"><canvas id="source"></canvas><div id="overlay" class="overlay"></div></div></div>
   </section>
   <div>
@@ -72,9 +72,39 @@ download.onclick=()=>{if(selected.length!==16)return;const a=document.createElem
 [dxEl,dyEl,scaleEl,footYEl].forEach(el=>el.oninput=()=>{if(active<0)return;const st=frameState[active];st.dx=parseInt(dxEl.value)||0;st.dy=parseInt(dyEl.value)||0;st.scale=Math.max(.1,(parseInt(scaleEl.value)||100)/100);st.footY=Math.max(0,Math.min(127,parseInt(footYEl.value)||118));renderAll();});
 function renderSource(){if(!img){source.width=1;source.height=1;overlay.innerHTML='';return;}source.width=img.naturalWidth;source.height=img.naturalHeight;sctx.clearRect(0,0,source.width,source.height);sctx.imageSmoothingEnabled=false;sctx.drawImage(img,0,0);stage.style.width=source.width+'px';stage.style.height=source.height+'px';renderGridOverlay();}
 function renderGridOverlay(){overlay.innerHTML='';for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const i=r*cols+c,d=document.createElement('div');d.className='cell';d.style.left=xCuts[c]+'px';d.style.top=yCuts[r]+'px';d.style.width=(xCuts[c+1]-xCuts[c])+'px';d.style.height=(yCuts[r+1]-yCuts[r])+'px';d.onclick=e=>{e.stopPropagation();selectCell(i)};overlay.appendChild(d);}for(let i=1;i<xCuts.length-1;i++){const l=document.createElement('div');l.className='grid-line v';l.style.left=xCuts[i]+'px';l.dataset.axis='x';l.dataset.index=i;l.onpointerdown=startDrag;overlay.appendChild(l);}for(let i=1;i<yCuts.length-1;i++){const l=document.createElement('div');l.className='grid-line h';l.style.top=yCuts[i]+'px';l.dataset.axis='y';l.dataset.index=i;l.onpointerdown=startDrag;overlay.appendChild(l);}markSelections();}
-function startDrag(e){e.preventDefault();e.stopPropagation();const el=e.currentTarget;drag={axis:el.dataset.axis,index:+el.dataset.index,el};el.classList.add('dragging');el.setPointerCapture(e.pointerId);el.onpointermove=moveDrag;el.onpointerup=endDrag;el.onpointercancel=endDrag;}
-function moveDrag(e){if(!drag||!img)return;const rect=stage.getBoundingClientRect(),scaleX=img.naturalWidth/rect.width,scaleY=img.naturalHeight/rect.height;if(drag.axis==='x'){let v=Math.round((e.clientX-rect.left)*scaleX);const i=drag.index;v=Math.max(xCuts[i-1]+1,Math.min(xCuts[i+1]-1,v));xCuts[i]=v;}else{let v=Math.round((e.clientY-rect.top)*scaleY);const i=drag.index;v=Math.max(yCuts[i-1]+1,Math.min(yCuts[i+1]-1,v));yCuts[i]=v;}renderGridOverlay();renderAll();}
-function endDrag(e){if(!drag)return;drag.el?.classList.remove('dragging');drag=null;}
+function startDrag(e){
+  e.preventDefault();e.stopPropagation();
+  const el=e.currentTarget;
+  drag={axis:el.dataset.axis,index:+el.dataset.index};
+  document.body.style.cursor=drag.axis==='x'?'ew-resize':'ns-resize';
+  window.addEventListener('pointermove',moveDrag);
+  window.addEventListener('pointerup',endDrag);
+  window.addEventListener('pointercancel',endDrag);
+}
+function moveDrag(e){
+  if(!drag||!img)return;
+  e.preventDefault();
+  const rect=stage.getBoundingClientRect();
+  const scaleX=img.naturalWidth/rect.width,scaleY=img.naturalHeight/rect.height;
+  if(drag.axis==='x'){
+    let v=Math.round((e.clientX-rect.left)*scaleX),i=drag.index;
+    v=Math.max(xCuts[i-1]+1,Math.min(xCuts[i+1]-1,v));
+    xCuts[i]=v;
+  }else{
+    let v=Math.round((e.clientY-rect.top)*scaleY),i=drag.index;
+    v=Math.max(yCuts[i-1]+1,Math.min(yCuts[i+1]-1,v));
+    yCuts[i]=v;
+  }
+  renderGridOverlay();renderAll();
+}
+function endDrag(){
+  if(!drag)return;
+  drag=null;
+  document.body.style.cursor='';
+  window.removeEventListener('pointermove',moveDrag);
+  window.removeEventListener('pointerup',endDrag);
+  window.removeEventListener('pointercancel',endDrag);
+}
 function selectCell(i){if(!img||selected.length>=16||selected.includes(i))return;selected.push(i);frameState.push({dx:0,dy:0,scale:1,footY:118});active=selected.length-1;syncEditor();renderAll();}
 function srcRect(index){const c=index%cols,r=Math.floor(index/cols);return{x:xCuts[c],y:yCuts[r],w:xCuts[c+1]-xCuts[c],h:yCuts[r+1]-yCuts[r]};}
 function alphaBounds(r){const temp=document.createElement('canvas');temp.width=r.w;temp.height=r.h;const t=temp.getContext('2d',{willReadFrequently:true});t.drawImage(img,r.x,r.y,r.w,r.h,0,0,r.w,r.h);const data=t.getImageData(0,0,r.w,r.h).data;let minX=r.w,minY=r.h,maxX=-1,maxY=-1;for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++){if(data[(y*r.w+x)*4+3]>8){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}}return maxX<0?{minX:0,minY:0,maxX:r.w-1,maxY:r.h-1}:{minX,minY,maxX,maxY};}
