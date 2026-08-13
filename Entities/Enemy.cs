@@ -24,9 +24,9 @@ public sealed class Enemy
         Body.Position += new Vector2(direction * MoveSpeed * dt, 0f);
     }
 
-    public void CheckKick(Rectangle kickBounds)
+    public void CheckAttack(Rectangle attackBounds)
     {
-        if (IsAlive && !kickBounds.IsEmpty && Body.CollisionBounds.Intersects(kickBounds))
+        if (IsAlive && !attackBounds.IsEmpty && Body.CollisionBounds.Intersects(attackBounds))
             IsAlive = false;
     }
 }
