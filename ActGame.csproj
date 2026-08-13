@@ -14,5 +14,10 @@
     <Content Include="Content\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+
+    <!-- If 002_swordswoman.png is kept in the repository root, copy it without modifying it. -->
+    <None Update="002_swordswoman.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>
