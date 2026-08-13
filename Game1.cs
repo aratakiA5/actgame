@@ -7,6 +7,18 @@ namespace ActGame;
 
 public sealed class Game1 : Game
 {
+    private enum GameScreen
+    {
+        PlayerSelect,
+        Playing
+    }
+
+    private enum PlayerCharacter
+    {
+        PinkFighter,
+        BlondeSwordswoman
+    }
+
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
@@ -17,6 +29,10 @@ public sealed class Game1 : Game
 
     private const float GroundY = 620f;
     private const int SpriteCell = 48;
+
+    private GameScreen _screen = GameScreen.PlayerSelect;
+    private PlayerCharacter _selectedCharacter = PlayerCharacter.PinkFighter;
+    private KeyboardState _previousKeyboard;
     private double _animationTime;
 
     public Game1()
@@ -27,6 +43,7 @@ public sealed class Game1 : Game
             PreferredBackBufferHeight = 720
         };
         IsMouseVisible = true;
+        Window.Title = "ActGame - PLAYER SELECT: Left/Right, Enter to start";
     }
 
     protected override void Initialize()
@@ -55,7 +72,24 @@ public sealed class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (Keyboard.GetState().IsKeyDown(Keys.Escape)) Exit();
+        var keyboard = Keyboard.GetState();
+
+        if (_screen == GameScreen.PlayerSelect)
+        {
+            UpdatePlayerSelect(keyboard);
+            _previousKeyboard = keyboard;
+            base.Update(gameTime);
+            return;
+        }
+
+        if (IsNewKeyPress(keyboard, Keys.Escape))
+        {
+            _screen = GameScreen.PlayerSelect;
+            Window.Title = BuildSelectTitle();
+            _previousKeyboard = keyboard;
+            base.Update(gameTime);
+            return;
+        }
 
         _animationTime += gameTime.ElapsedGameTime.TotalSeconds;
         _player.Update(gameTime, GroundY);
@@ -66,6 +100,7 @@ public sealed class Game1 : Game
             enemy.CheckKick(_player.KickBounds);
         }
 
+        _previousKeyboard = keyboard;
         base.Update(gameTime);
     }
 
@@ -74,11 +109,107 @@ public sealed class Game1 : Game
         GraphicsDevice.Clear(Color.CornflowerBlue);
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
 
+        if (_screen == GameScreen.PlayerSelect)
+        {
+            DrawPlayerSelect();
+        }
+        else
+        {
+            DrawGame();
+        }
+
+        _spriteBatch.End();
+        base.Draw(gameTime);
+    }
+
+    private void UpdatePlayerSelect(KeyboardState keyboard)
+    {
+        if (IsNewKeyPress(keyboard, Keys.Left) || IsNewKeyPress(keyboard, Keys.A))
+            _selectedCharacter = PlayerCharacter.PinkFighter;
+
+        if (IsNewKeyPress(keyboard, Keys.Right) || IsNewKeyPress(keyboard, Keys.D))
+            _selectedCharacter = PlayerCharacter.BlondeSwordswoman;
+
+        if (IsNewKeyPress(keyboard, Keys.Enter) || IsNewKeyPress(keyboard, Keys.Space))
+        {
+            _screen = GameScreen.Playing;
+            _animationTime = 0;
+            Window.Title = _selectedCharacter == PlayerCharacter.PinkFighter
+                ? "ActGame - Pink Fighter"
+                : "ActGame - Blonde Swordswoman";
+        }
+        else if (IsNewKeyPress(keyboard, Keys.Escape))
+        {
+            Exit();
+        }
+        else
+        {
+            Window.Title = BuildSelectTitle();
+        }
+    }
+
+    private string BuildSelectTitle()
+    {
+        var name = _selectedCharacter == PlayerCharacter.PinkFighter
+            ? "Pink Fighter"
+            : "Blonde Swordswoman";
+
+        return $"ActGame - PLAYER SELECT: {name}  [Left/Right] Select  [Enter] Start";
+    }
+
+    private void DrawPlayerSelect()
+    {
+        _spriteBatch.Draw(_pixel, new Rectangle(0, 0, 1280, 720), new Color(20, 28, 48));
+
+        var leftCard = new Rectangle(250, 150, 330, 430);
+        var rightCard = new Rectangle(700, 150, 330, 430);
+
+        DrawSelectCard(leftCard, _selectedCharacter == PlayerCharacter.PinkFighter);
+        DrawSelectCard(rightCard, _selectedCharacter == PlayerCharacter.BlondeSwordswoman);
+
+        // Pink fighter preview: first idle frame from the 4x4 game sheet.
+        var heroineSource = new Rectangle(0, 0, SpriteCell, SpriteCell);
+        var heroineDest = new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300);
+        _spriteBatch.Draw(_heroineSprite, heroineDest, heroineSource, Color.White);
+
+        // Blonde swordswoman preview: game-ready enemy PNG.
+        var swordswomanDest = new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315);
+        _spriteBatch.Draw(_enemySprite, swordswomanDest, Color.White);
+
+        // Simple arrows make the selection control visible even without a font asset.
+        DrawArrow(new Vector2(170, 365), false);
+        DrawArrow(new Vector2(1110, 365), true);
+    }
+
+    private void DrawSelectCard(Rectangle card, bool selected)
+    {
+        var border = selected ? 8 : 3;
+        var borderColor = selected ? Color.Gold : Color.SlateGray;
+        var fillColor = selected ? new Color(52, 62, 92) : new Color(36, 43, 65);
+
+        _spriteBatch.Draw(_pixel, card, borderColor);
+        var inner = new Rectangle(card.X + border, card.Y + border, card.Width - border * 2, card.Height - border * 2);
+        _spriteBatch.Draw(_pixel, inner, fillColor);
+    }
+
+    private void DrawArrow(Vector2 center, bool right)
+    {
+        const int size = 18;
+        for (var i = 0; i < 5; i++)
+        {
+            var width = (i + 1) * size / 2;
+            var y = (int)center.Y - size * 2 + i * size;
+            var x = right ? (int)center.X - width : (int)center.X;
+            _spriteBatch.Draw(_pixel, new Rectangle(x, y, width, size - 3), Color.White);
+        }
+    }
+
+    private void DrawGame()
+    {
         _spriteBatch.Draw(_pixel, new Rectangle(0, (int)GroundY, 1280, 100), Color.ForestGreen);
 
         DrawPlayer();
 
-        // Debug collision / attack boxes remain visible while tuning combat.
         _spriteBatch.Draw(_pixel, _player.Body.CollisionBounds, Color.Pink * 0.20f);
         if (_player.IsKicking)
             _spriteBatch.Draw(_pixel, _player.KickBounds, Color.Yellow * 0.45f);
@@ -88,13 +219,16 @@ public sealed class Game1 : Game
             DrawEnemy(enemy);
             _spriteBatch.Draw(_pixel, enemy.Body.CollisionBounds, Color.Red * 0.20f);
         }
-
-        _spriteBatch.End();
-        base.Draw(gameTime);
     }
 
     private void DrawPlayer()
     {
+        if (_selectedCharacter == PlayerCharacter.BlondeSwordswoman)
+        {
+            DrawSwordswomanPlayer();
+            return;
+        }
+
         var row = 0;
         var fps = 4.0;
 
@@ -129,10 +263,25 @@ public sealed class Game1 : Game
             0f);
     }
 
+    private void DrawSwordswomanPlayer()
+    {
+        var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
+        var bounds = _player.Body.VisualBounds;
+        var destination = new Rectangle(bounds.X - 12, bounds.Y - 12, bounds.Width + 24, bounds.Height + 12);
+
+        _spriteBatch.Draw(
+            _enemySprite,
+            destination,
+            null,
+            Color.White,
+            0f,
+            Vector2.Zero,
+            effects,
+            0f);
+    }
+
     private void DrawEnemy(Enemy enemy)
     {
-        // The source PNG is one game-ready frame extracted from the library sprite sheet.
-        // Flip it toward the heroine without changing its collision dimensions.
         var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
         var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
 
@@ -146,4 +295,7 @@ public sealed class Game1 : Game
             effects,
             0f);
     }
+
+    private bool IsNewKeyPress(KeyboardState keyboard, Keys key) =>
+        keyboard.IsKeyDown(key) && !_previousKeyboard.IsKeyDown(key);
 }
