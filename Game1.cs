@@ -51,7 +51,6 @@ public sealed class Game1 : Game
         _pixel.SetData(new[] { Color.White });
 
         _heroineSprite = LoadPng(Path.Combine("Content", "Player", "heroine_game_sheet.png"));
-        // Keep 002_swordswoman.png exactly as committed. It is cropped only by source rectangles at draw time.
         _swordswomanSprite = LoadPng(Path.Combine("Content", "Player", "002_swordswoman.png"));
         _enemySprite = LoadPng(Path.Combine("Content", "Enemies", "blonde_swordswoman.png"));
     }
@@ -99,7 +98,14 @@ public sealed class Game1 : Game
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
-        _spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
+
+        // Point sampling is intentional. Linear filtering blends RGB values from fully
+        // transparent pixels into visible edge pixels and creates a white halo around
+        // transparent PNG sprites when they are scaled down.
+        _spriteBatch.Begin(
+            blendState: BlendState.AlphaBlend,
+            samplerState: SamplerState.PointClamp);
+
         if (_screen == GameScreen.PlayerSelect) DrawPlayerSelect(); else DrawGame();
         _spriteBatch.End();
         base.Draw(gameTime);
@@ -129,8 +135,6 @@ public sealed class Game1 : Game
 
     private Rectangle SwordswomanSource(int column, int row)
     {
-        // 828x724 is not evenly divisible by 4. Calculate every boundary from the real texture size
-        // so no pixels are discarded and the source PNG itself never needs to be edited.
         var x0 = column * _swordswomanSprite.Width / SwordswomanColumns;
         var x1 = (column + 1) * _swordswomanSprite.Width / SwordswomanColumns;
         var y0 = row * _swordswomanSprite.Height / SwordswomanRows;
@@ -203,13 +207,10 @@ public sealed class Game1 : Game
 
     private void DrawSwordswomanPlayer()
     {
-        // 4x4 sheet supplied by the user: row 0 idle, row 1 run, row 2 jump/movement, row 3 sword attack.
         var row = _player.IsAttacking ? 3 : !_player.IsGrounded ? 2 : _player.IsMoving ? 1 : 0;
         var fps = _player.IsAttacking ? 12.0 : !_player.IsGrounded ? 8.0 : _player.IsMoving ? 10.0 : 4.0;
         var frame = (int)(_animationTime * fps) % 4;
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
-
-        // Only the destination rectangle scales the original source image down to the configured character size.
         _spriteBatch.Draw(_swordswomanSprite, _player.Body.VisualBounds, SwordswomanSource(frame, row), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
@@ -218,7 +219,7 @@ public sealed class Game1 : Game
         var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
         var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
         var frame = (int)(_animationTime * 8.0) % 4;
-        var cell = 48;
+        const int cell = 48;
         _spriteBatch.Draw(_enemySprite, enemy.Body.VisualBounds, new Rectangle(frame * cell, cell, cell, cell), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
