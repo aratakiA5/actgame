@@ -13,14 +13,15 @@ public sealed class Game1 : Game
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
-    private Texture2D _heroineSprite = null!;
+    private Texture2D _fighterSprite = null!;
     private Texture2D _swordswomanSprite = null!;
     private Texture2D _enemySprite = null!;
     private readonly Player _player = new();
     private readonly List<Enemy> _enemies = new();
 
     private const float GroundY = 620f;
-    private const int FighterCell = 48;
+    private const int FighterColumns = 4;
+    private const int FighterRows = 4;
     private const int SwordswomanColumns = 4;
     private const int SwordswomanRows = 4;
 
@@ -50,7 +51,8 @@ public sealed class Game1 : Game
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
 
-        _heroineSprite = LoadPng(Path.Combine("Content", "Player", "heroine_game_sheet.png"));
+        // Use the original user-provided sheets directly. They are never resized or rewritten on disk.
+        _fighterSprite = LoadPng(Path.Combine("Content", "Player", "001_FightingGirl.png"));
         _swordswomanSprite = LoadPng(Path.Combine("Content", "Player", "002_swordswoman.png"));
         _enemySprite = LoadPng(Path.Combine("Content", "Enemies", "blonde_swordswoman.png"));
     }
@@ -98,14 +100,7 @@ public sealed class Game1 : Game
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
-
-        // Texture2D.FromStream loads ordinary PNG alpha data. Use NonPremultiplied
-        // so semi-transparent edge pixels are blended as straight alpha rather than
-        // being treated as premultiplied colors, which can produce pale/white halos.
-        _spriteBatch.Begin(
-            blendState: BlendState.NonPremultiplied,
-            samplerState: SamplerState.PointClamp);
-
+        _spriteBatch.Begin(blendState: BlendState.NonPremultiplied, samplerState: SamplerState.PointClamp);
         if (_screen == GameScreen.PlayerSelect) DrawPlayerSelect(); else DrawGame();
         _spriteBatch.End();
         base.Draw(gameTime);
@@ -121,7 +116,7 @@ public sealed class Game1 : Game
             _player.ConfigureCharacter(_selectedCharacter == PlayerCharacter.BlondeSwordswoman ? PlayerCombatStyle.Swordswoman : PlayerCombatStyle.MartialArtist);
             _screen = GameScreen.Playing;
             _animationTime = 0;
-            Window.Title = _selectedCharacter == PlayerCharacter.PinkFighter ? "ActGame - Pink Fighter - J: Kick" : "ActGame - Blonde Swordswoman - J: Sword Attack";
+            Window.Title = _selectedCharacter == PlayerCharacter.PinkFighter ? "ActGame - Fighting Girl - J: Kick" : "ActGame - Blonde Swordswoman - J: Sword Attack";
         }
         else if (IsNewKeyPress(keyboard, Keys.Escape)) Exit();
         else Window.Title = BuildSelectTitle();
@@ -129,18 +124,23 @@ public sealed class Game1 : Game
 
     private string BuildSelectTitle()
     {
-        var name = _selectedCharacter == PlayerCharacter.PinkFighter ? "Pink Fighter" : "Blonde Swordswoman";
+        var name = _selectedCharacter == PlayerCharacter.PinkFighter ? "Fighting Girl" : "Blonde Swordswoman";
         return $"ActGame - PLAYER SELECT: {name}  [Left/Right] Select  [Enter] Start";
     }
 
-    private Rectangle SwordswomanSource(int column, int row)
+    private Rectangle SheetSource(Texture2D texture, int columns, int rows, int column, int row)
     {
-        var x0 = column * _swordswomanSprite.Width / SwordswomanColumns;
-        var x1 = (column + 1) * _swordswomanSprite.Width / SwordswomanColumns;
-        var y0 = row * _swordswomanSprite.Height / SwordswomanRows;
-        var y1 = (row + 1) * _swordswomanSprite.Height / SwordswomanRows;
+        // Calculate boundaries from the real texture dimensions. This keeps the original PNG untouched
+        // even when its width or height is not exactly divisible by the grid count.
+        var x0 = column * texture.Width / columns;
+        var x1 = (column + 1) * texture.Width / columns;
+        var y0 = row * texture.Height / rows;
+        var y1 = (row + 1) * texture.Height / rows;
         return new Rectangle(x0, y0, x1 - x0, y1 - y0);
     }
+
+    private Rectangle FighterSource(int column, int row) => SheetSource(_fighterSprite, FighterColumns, FighterRows, column, row);
+    private Rectangle SwordswomanSource(int column, int row) => SheetSource(_swordswomanSprite, SwordswomanColumns, SwordswomanRows, column, row);
 
     private void DrawPlayerSelect()
     {
@@ -150,10 +150,10 @@ public sealed class Game1 : Game
         DrawSelectCard(leftCard, _selectedCharacter == PlayerCharacter.PinkFighter);
         DrawSelectCard(rightCard, _selectedCharacter == PlayerCharacter.BlondeSwordswoman);
 
-        var fighterFrame = (int)(_animationTime * 4.0) % 4;
-        _spriteBatch.Draw(_heroineSprite, new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300), new Rectangle(fighterFrame * FighterCell, 0, FighterCell, FighterCell), Color.White);
+        var fighterFrame = (int)(_animationTime * 4.0) % FighterColumns;
+        _spriteBatch.Draw(_fighterSprite, new Rectangle(leftCard.Center.X - 105, leftCard.Y + 65, 210, 315), FighterSource(fighterFrame, 0), Color.White);
 
-        var swordFrame = (int)(_animationTime * 4.0) % 4;
+        var swordFrame = (int)(_animationTime * 4.0) % SwordswomanColumns;
         _spriteBatch.Draw(_swordswomanSprite, new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315), SwordswomanSource(swordFrame, 0), Color.White);
         DrawArrow(new Vector2(170, 365), false);
         DrawArrow(new Vector2(1110, 365), true);
@@ -198,18 +198,19 @@ public sealed class Game1 : Game
 
     private void DrawFighterPlayer()
     {
+        // 001_FightingGirl.png is used directly as a 4x4 action sheet.
         var row = _player.IsAttacking ? 3 : !_player.IsGrounded ? 2 : _player.IsMoving ? 1 : 0;
-        var fps = _player.IsAttacking ? 12.0 : !_player.IsGrounded ? 7.0 : _player.IsMoving ? 10.0 : 4.0;
-        var frame = (int)(_animationTime * fps) % 4;
+        var fps = _player.IsAttacking ? 12.0 : !_player.IsGrounded ? 8.0 : _player.IsMoving ? 10.0 : 4.0;
+        var frame = (int)(_animationTime * fps) % FighterColumns;
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
-        _spriteBatch.Draw(_heroineSprite, _player.Body.VisualBounds, new Rectangle(frame * FighterCell, row * FighterCell, FighterCell, FighterCell), Color.White, 0f, Vector2.Zero, effects, 0f);
+        _spriteBatch.Draw(_fighterSprite, _player.Body.VisualBounds, FighterSource(frame, row), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
     private void DrawSwordswomanPlayer()
     {
         var row = _player.IsAttacking ? 3 : !_player.IsGrounded ? 2 : _player.IsMoving ? 1 : 0;
         var fps = _player.IsAttacking ? 12.0 : !_player.IsGrounded ? 8.0 : _player.IsMoving ? 10.0 : 4.0;
-        var frame = (int)(_animationTime * fps) % 4;
+        var frame = (int)(_animationTime * fps) % SwordswomanColumns;
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
         _spriteBatch.Draw(_swordswomanSprite, _player.Body.VisualBounds, SwordswomanSource(frame, row), Color.White, 0f, Vector2.Zero, effects, 0f);
     }
