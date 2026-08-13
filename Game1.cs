@@ -99,11 +99,11 @@ public sealed class Game1 : Game
     {
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
-        // Point sampling is intentional. Linear filtering blends RGB values from fully
-        // transparent pixels into visible edge pixels and creates a white halo around
-        // transparent PNG sprites when they are scaled down.
+        // Texture2D.FromStream loads ordinary PNG alpha data. Use NonPremultiplied
+        // so semi-transparent edge pixels are blended as straight alpha rather than
+        // being treated as premultiplied colors, which can produce pale/white halos.
         _spriteBatch.Begin(
-            blendState: BlendState.AlphaBlend,
+            blendState: BlendState.NonPremultiplied,
             samplerState: SamplerState.PointClamp);
 
         if (_screen == GameScreen.PlayerSelect) DrawPlayerSelect(); else DrawGame();
