@@ -11,6 +11,7 @@ public sealed class Game1 : Game
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
     private Texture2D _heroineSprite = null!;
+    private Texture2D _enemySprite = null!;
     private readonly Player _player = new();
     private readonly List<Enemy> _enemies = new();
 
@@ -30,9 +31,10 @@ public sealed class Game1 : Game
 
     protected override void Initialize()
     {
-        _enemies.Add(new Enemy(new Vector2(650, GroundY), new Vector2(56, 72), new Vector2(44, 64), 75));
-        _enemies.Add(new Enemy(new Vector2(900, GroundY), new Vector2(105, 170), new Vector2(78, 150), 45));
-        _enemies.Add(new Enemy(new Vector2(1120, GroundY), new Vector2(150, 105), new Vector2(128, 86), 60));
+        // Same swordswoman sprite can be displayed at different physical sizes.
+        _enemies.Add(new Enemy(new Vector2(650, GroundY), new Vector2(86, 120), new Vector2(46, 104), 75));
+        _enemies.Add(new Enemy(new Vector2(900, GroundY), new Vector2(112, 156), new Vector2(60, 136), 45));
+        _enemies.Add(new Enemy(new Vector2(1120, GroundY), new Vector2(72, 100), new Vector2(40, 88), 90));
         base.Initialize();
     }
 
@@ -42,9 +44,13 @@ public sealed class Game1 : Game
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
 
-        var spritePath = Path.Combine(AppContext.BaseDirectory, "Content", "Player", "heroine_game_sheet.png");
-        using var stream = File.OpenRead(spritePath);
-        _heroineSprite = Texture2D.FromStream(GraphicsDevice, stream);
+        var heroinePath = Path.Combine(AppContext.BaseDirectory, "Content", "Player", "heroine_game_sheet.png");
+        using (var stream = File.OpenRead(heroinePath))
+            _heroineSprite = Texture2D.FromStream(GraphicsDevice, stream);
+
+        var enemyPath = Path.Combine(AppContext.BaseDirectory, "Content", "Enemies", "blonde_swordswoman.png");
+        using (var stream = File.OpenRead(enemyPath))
+            _enemySprite = Texture2D.FromStream(GraphicsDevice, stream);
     }
 
     protected override void Update(GameTime gameTime)
@@ -72,15 +78,15 @@ public sealed class Game1 : Game
 
         DrawPlayer();
 
-        // Keep debug collision / attack boxes visible while the prototype is being tuned.
+        // Debug collision / attack boxes remain visible while tuning combat.
         _spriteBatch.Draw(_pixel, _player.Body.CollisionBounds, Color.Pink * 0.20f);
         if (_player.IsKicking)
             _spriteBatch.Draw(_pixel, _player.KickBounds, Color.Yellow * 0.45f);
 
         foreach (var enemy in _enemies.Where(e => e.IsAlive))
         {
-            _spriteBatch.Draw(_pixel, enemy.Body.VisualBounds, Color.DarkRed);
-            _spriteBatch.Draw(_pixel, enemy.Body.CollisionBounds, Color.Red * 0.35f);
+            DrawEnemy(enemy);
+            _spriteBatch.Draw(_pixel, enemy.Body.CollisionBounds, Color.Red * 0.20f);
         }
 
         _spriteBatch.End();
@@ -89,7 +95,7 @@ public sealed class Game1 : Game
 
     private void DrawPlayer()
     {
-        var row = 0; // idle
+        var row = 0;
         var fps = 4.0;
 
         if (_player.IsKicking)
@@ -116,6 +122,24 @@ public sealed class Game1 : Game
             _heroineSprite,
             _player.Body.VisualBounds,
             source,
+            Color.White,
+            0f,
+            Vector2.Zero,
+            effects,
+            0f);
+    }
+
+    private void DrawEnemy(Enemy enemy)
+    {
+        // The source PNG is one game-ready frame extracted from the library sprite sheet.
+        // Flip it toward the heroine without changing its collision dimensions.
+        var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
+        var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
+
+        _spriteBatch.Draw(
+            _enemySprite,
+            enemy.Body.VisualBounds,
+            null,
             Color.White,
             0f,
             Vector2.Zero,
