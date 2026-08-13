@@ -9,19 +9,21 @@ public sealed class Player
     private const float MoveSpeed = 260f;
     private const float JumpSpeed = 560f;
     private const float Gravity = 1500f;
-    private const float KickDuration = 0.18f;
+    private const float KickDuration = 0.28f;
 
     private float _kickTimer;
     private KeyboardState _previousKeyboard;
 
     public EntityBody Body { get; } = new(
         new Vector2(180, 620),
-        visualSize: new Vector2(72, 128),
+        visualSize: new Vector2(128, 128),
         collisionSize: new Vector2(46, 112),
         collisionOffset: Vector2.Zero);
 
     public bool FacingRight { get; private set; } = true;
     public bool IsKicking => _kickTimer > 0f;
+    public bool IsGrounded { get; private set; }
+    public bool IsMoving => Math.Abs(Body.Velocity.X) > 1f;
     public int HitPoints { get; private set; } = 5;
 
     public Rectangle KickBounds
@@ -31,7 +33,6 @@ public sealed class Player
             if (!IsKicking)
                 return Rectangle.Empty;
 
-            // Attack size is independent of the character sprite/body size.
             const int width = 64;
             const int height = 42;
             var body = Body.CollisionBounds;
@@ -55,15 +56,18 @@ public sealed class Player
 
         Body.Velocity = new Vector2(direction * MoveSpeed, Body.Velocity.Y + Gravity * dt);
 
-        var grounded = Body.Position.Y >= groundY - 0.5f;
-        if (grounded)
+        IsGrounded = Body.Position.Y >= groundY - 0.5f;
+        if (IsGrounded)
         {
             Body.Position = new Vector2(Body.Position.X, groundY);
             Body.Velocity = new Vector2(Body.Velocity.X, 0f);
         }
 
-        if (grounded && Pressed(keyboard, Keys.Space))
+        if (IsGrounded && Pressed(keyboard, Keys.Space))
+        {
             Body.Velocity = new Vector2(Body.Velocity.X, -JumpSpeed);
+            IsGrounded = false;
+        }
 
         if (Pressed(keyboard, Keys.J))
             _kickTimer = KickDuration;
