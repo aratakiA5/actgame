@@ -29,6 +29,7 @@ public sealed class Game1 : Game
 
     private const float GroundY = 620f;
     private const int SpriteCell = 48;
+    private const int SwordswomanCell = 48;
 
     private GameScreen _screen = GameScreen.PlayerSelect;
     private PlayerCharacter _selectedCharacter = PlayerCharacter.PinkFighter;
@@ -48,7 +49,6 @@ public sealed class Game1 : Game
 
     protected override void Initialize()
     {
-        // Same swordswoman sprite can be displayed at different physical sizes.
         _enemies.Add(new Enemy(new Vector2(650, GroundY), new Vector2(86, 120), new Vector2(46, 104), 75));
         _enemies.Add(new Enemy(new Vector2(900, GroundY), new Vector2(112, 156), new Vector2(60, 136), 45));
         _enemies.Add(new Enemy(new Vector2(1120, GroundY), new Vector2(72, 100), new Vector2(40, 88), 90));
@@ -110,13 +110,9 @@ public sealed class Game1 : Game
         _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
 
         if (_screen == GameScreen.PlayerSelect)
-        {
             DrawPlayerSelect();
-        }
         else
-        {
             DrawGame();
-        }
 
         _spriteBatch.End();
         base.Draw(gameTime);
@@ -167,16 +163,16 @@ public sealed class Game1 : Game
         DrawSelectCard(leftCard, _selectedCharacter == PlayerCharacter.PinkFighter);
         DrawSelectCard(rightCard, _selectedCharacter == PlayerCharacter.BlondeSwordswoman);
 
-        // Pink fighter preview: first idle frame from the 4x4 game sheet.
         var heroineSource = new Rectangle(0, 0, SpriteCell, SpriteCell);
         var heroineDest = new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300);
         _spriteBatch.Draw(_heroineSprite, heroineDest, heroineSource, Color.White);
 
-        // Blonde swordswoman preview: game-ready enemy PNG.
+        // Animate the swordswoman preview using the idle row.
+        var previewFrame = (int)(_animationTime * 4.0) % 4;
+        var swordswomanSource = new Rectangle(previewFrame * SwordswomanCell, 0, SwordswomanCell, SwordswomanCell);
         var swordswomanDest = new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315);
-        _spriteBatch.Draw(_enemySprite, swordswomanDest, Color.White);
+        _spriteBatch.Draw(_enemySprite, swordswomanDest, swordswomanSource, Color.White);
 
-        // Simple arrows make the selection control visible even without a font asset.
         DrawArrow(new Vector2(170, 365), false);
         DrawArrow(new Vector2(1110, 365), true);
     }
@@ -265,6 +261,34 @@ public sealed class Game1 : Game
 
     private void DrawSwordswomanPlayer()
     {
+        var row = 0;
+        var fps = 4.0;
+
+        // Rows of blonde_swordswoman.png:
+        // 0 = idle, 1 = run, 2 = jump, 3 = sword attack.
+        if (_player.IsKicking)
+        {
+            row = 3;
+            fps = 12.0;
+        }
+        else if (!_player.IsGrounded)
+        {
+            row = 2;
+            fps = 7.0;
+        }
+        else if (_player.IsMoving)
+        {
+            row = 1;
+            fps = 10.0;
+        }
+
+        var frame = (int)(_animationTime * fps) % 4;
+        var source = new Rectangle(
+            frame * SwordswomanCell,
+            row * SwordswomanCell,
+            SwordswomanCell,
+            SwordswomanCell);
+
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
         var bounds = _player.Body.VisualBounds;
         var destination = new Rectangle(bounds.X - 12, bounds.Y - 12, bounds.Width + 24, bounds.Height + 12);
@@ -272,7 +296,7 @@ public sealed class Game1 : Game
         _spriteBatch.Draw(
             _enemySprite,
             destination,
-            null,
+            source,
             Color.White,
             0f,
             Vector2.Zero,
@@ -285,10 +309,18 @@ public sealed class Game1 : Game
         var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
         var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
 
+        // Enemies walk continuously, so use the run row of the same 4x4 sheet.
+        var frame = (int)(_animationTime * 8.0) % 4;
+        var source = new Rectangle(
+            frame * SwordswomanCell,
+            SwordswomanCell,
+            SwordswomanCell,
+            SwordswomanCell);
+
         _spriteBatch.Draw(
             _enemySprite,
             enemy.Body.VisualBounds,
-            null,
+            source,
             Color.White,
             0f,
             Vector2.Zero,
