@@ -23,12 +23,12 @@ public sealed class Game1 : Game
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
     private Texture2D _heroineSprite = null!;
-    private Texture2D _enemySprite = null!;
+    private Texture2D _swordswomanSprite = null!;
     private readonly Player _player = new();
     private readonly List<Enemy> _enemies = new();
 
     private const float GroundY = 620f;
-    private const int SpriteCell = 48;
+    private const int FighterCell = 48;
     private const int SwordswomanCell = 48;
 
     private GameScreen _screen = GameScreen.PlayerSelect;
@@ -61,18 +61,22 @@ public sealed class Game1 : Game
         _pixel = new Texture2D(GraphicsDevice, 1, 1);
         _pixel.SetData(new[] { Color.White });
 
-        var heroinePath = Path.Combine(AppContext.BaseDirectory, "Content", "Player", "heroine_game_sheet.png");
-        using (var stream = File.OpenRead(heroinePath))
+        var fighterPath = Path.Combine(AppContext.BaseDirectory, "Content", "Player", "heroine_game_sheet.png");
+        using (var stream = File.OpenRead(fighterPath))
             _heroineSprite = Texture2D.FromStream(GraphicsDevice, stream);
 
-        var enemyPath = Path.Combine(AppContext.BaseDirectory, "Content", "Enemies", "blonde_swordswoman.png");
-        using (var stream = File.OpenRead(enemyPath))
-            _enemySprite = Texture2D.FromStream(GraphicsDevice, stream);
+        // This asset is now treated as the blonde swordswoman's player sprite sheet,
+        // not as a generic player skin. The current repository asset contains
+        // dedicated idle/run/jump/sword-attack rows derived from the original sheet.
+        var swordswomanPath = Path.Combine(AppContext.BaseDirectory, "Content", "Enemies", "blonde_swordswoman.png");
+        using (var stream = File.OpenRead(swordswomanPath))
+            _swordswomanSprite = Texture2D.FromStream(GraphicsDevice, stream);
     }
 
     protected override void Update(GameTime gameTime)
     {
         var keyboard = Keyboard.GetState();
+        _animationTime += gameTime.ElapsedGameTime.TotalSeconds;
 
         if (_screen == GameScreen.PlayerSelect)
         {
@@ -91,13 +95,12 @@ public sealed class Game1 : Game
             return;
         }
 
-        _animationTime += gameTime.ElapsedGameTime.TotalSeconds;
         _player.Update(gameTime, GroundY);
 
         foreach (var enemy in _enemies)
         {
             enemy.Update(gameTime, _player.Body.Position);
-            enemy.CheckKick(_player.KickBounds);
+            enemy.CheckAttack(_player.AttackBounds);
         }
 
         _previousKeyboard = keyboard;
@@ -128,11 +131,16 @@ public sealed class Game1 : Game
 
         if (IsNewKeyPress(keyboard, Keys.Enter) || IsNewKeyPress(keyboard, Keys.Space))
         {
+            _player.ConfigureCharacter(
+                _selectedCharacter == PlayerCharacter.BlondeSwordswoman
+                    ? PlayerCombatStyle.Swordswoman
+                    : PlayerCombatStyle.MartialArtist);
+
             _screen = GameScreen.Playing;
             _animationTime = 0;
             Window.Title = _selectedCharacter == PlayerCharacter.PinkFighter
-                ? "ActGame - Pink Fighter"
-                : "ActGame - Blonde Swordswoman";
+                ? "ActGame - Pink Fighter - J: Kick"
+                : "ActGame - Blonde Swordswoman - J: Sword Attack";
         }
         else if (IsNewKeyPress(keyboard, Keys.Escape))
         {
@@ -163,15 +171,15 @@ public sealed class Game1 : Game
         DrawSelectCard(leftCard, _selectedCharacter == PlayerCharacter.PinkFighter);
         DrawSelectCard(rightCard, _selectedCharacter == PlayerCharacter.BlondeSwordswoman);
 
-        var heroineSource = new Rectangle(0, 0, SpriteCell, SpriteCell);
-        var heroineDest = new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300);
-        _spriteBatch.Draw(_heroineSprite, heroineDest, heroineSource, Color.White);
+        var fighterFrame = (int)(_animationTime * 4.0) % 4;
+        var fighterSource = new Rectangle(fighterFrame * FighterCell, 0, FighterCell, FighterCell);
+        var fighterDest = new Rectangle(leftCard.Center.X - 90, leftCard.Y + 80, 180, 300);
+        _spriteBatch.Draw(_heroineSprite, fighterDest, fighterSource, Color.White);
 
-        // Animate the swordswoman preview using the idle row.
-        var previewFrame = (int)(_animationTime * 4.0) % 4;
-        var swordswomanSource = new Rectangle(previewFrame * SwordswomanCell, 0, SwordswomanCell, SwordswomanCell);
-        var swordswomanDest = new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315);
-        _spriteBatch.Draw(_enemySprite, swordswomanDest, swordswomanSource, Color.White);
+        var swordFrame = (int)(_animationTime * 4.0) % 4;
+        var swordSource = new Rectangle(swordFrame * SwordswomanCell, 0, SwordswomanCell, SwordswomanCell);
+        var swordDest = new Rectangle(rightCard.Center.X - 105, rightCard.Y + 65, 210, 315);
+        _spriteBatch.Draw(_swordswomanSprite, swordDest, swordSource, Color.White);
 
         DrawArrow(new Vector2(170, 365), false);
         DrawArrow(new Vector2(1110, 365), true);
@@ -207,8 +215,8 @@ public sealed class Game1 : Game
         DrawPlayer();
 
         _spriteBatch.Draw(_pixel, _player.Body.CollisionBounds, Color.Pink * 0.20f);
-        if (_player.IsKicking)
-            _spriteBatch.Draw(_pixel, _player.KickBounds, Color.Yellow * 0.45f);
+        if (_player.IsAttacking)
+            _spriteBatch.Draw(_pixel, _player.AttackBounds, Color.Yellow * 0.45f);
 
         foreach (var enemy in _enemies.Where(e => e.IsAlive))
         {
@@ -220,15 +228,17 @@ public sealed class Game1 : Game
     private void DrawPlayer()
     {
         if (_selectedCharacter == PlayerCharacter.BlondeSwordswoman)
-        {
             DrawSwordswomanPlayer();
-            return;
-        }
+        else
+            DrawFighterPlayer();
+    }
 
+    private void DrawFighterPlayer()
+    {
         var row = 0;
         var fps = 4.0;
 
-        if (_player.IsKicking)
+        if (_player.IsAttacking)
         {
             row = 3;
             fps = 12.0;
@@ -245,7 +255,7 @@ public sealed class Game1 : Game
         }
 
         var frame = (int)(_animationTime * fps) % 4;
-        var source = new Rectangle(frame * SpriteCell, row * SpriteCell, SpriteCell, SpriteCell);
+        var source = new Rectangle(frame * FighterCell, row * FighterCell, FighterCell, FighterCell);
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
 
         _spriteBatch.Draw(
@@ -262,11 +272,9 @@ public sealed class Game1 : Game
     private void DrawSwordswomanPlayer()
     {
         var row = 0;
-        var fps = 4.0;
+        var fps = 5.0;
 
-        // Rows of blonde_swordswoman.png:
-        // 0 = idle, 1 = run, 2 = jump, 3 = sword attack.
-        if (_player.IsKicking)
+        if (_player.IsAttacking)
         {
             row = 3;
             fps = 12.0;
@@ -274,7 +282,7 @@ public sealed class Game1 : Game
         else if (!_player.IsGrounded)
         {
             row = 2;
-            fps = 7.0;
+            fps = 8.0;
         }
         else if (_player.IsMoving)
         {
@@ -291,11 +299,10 @@ public sealed class Game1 : Game
 
         var effects = _player.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
         var bounds = _player.Body.VisualBounds;
-        var destination = new Rectangle(bounds.X - 12, bounds.Y - 12, bounds.Width + 24, bounds.Height + 12);
 
         _spriteBatch.Draw(
-            _enemySprite,
-            destination,
+            _swordswomanSprite,
+            bounds,
             source,
             Color.White,
             0f,
@@ -308,8 +315,6 @@ public sealed class Game1 : Game
     {
         var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
         var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
-
-        // Enemies walk continuously, so use the run row of the same 4x4 sheet.
         var frame = (int)(_animationTime * 8.0) % 4;
         var source = new Rectangle(
             frame * SwordswomanCell,
@@ -318,7 +323,7 @@ public sealed class Game1 : Game
             SwordswomanCell);
 
         _spriteBatch.Draw(
-            _enemySprite,
+            _swordswomanSprite,
             enemy.Body.VisualBounds,
             source,
             Color.White,
