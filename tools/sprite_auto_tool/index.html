@@ -33,7 +33,7 @@
       <div class="canvas-wrap checker source-wrap">
         <canvas id="sourceCanvas"></canvas>
       </div>
-      <div class="hint">青枠＝認識フレーム。クリックで選択、ドラッグで移動。四隅ハンドルで範囲調整。Shift+ドラッグで新規範囲。</div>
+      <div class="hint">青枠＝認識フレーム。クリックで選択、Ctrl/Cmd+クリックで統合対象を追加。ドラッグで移動、四隅で範囲調整、Shift+ドラッグで新規範囲。</div>
     </section>
 
     <section class="panel frames-panel">
@@ -41,6 +41,8 @@
         <h2>2. フレーム編集</h2>
         <div class="row compact">
           <button id="sortBtn" disabled>左→右 / 上→下</button>
+          <button id="splitBtn" disabled>選択を再分割</button>
+          <button id="mergeBtn" disabled>チェックを統合</button>
           <button id="deleteBtn" disabled>選択削除</button>
         </div>
       </div>
@@ -50,6 +52,7 @@
         <label>左右余白 <input id="padX" type="number" min="0" value="8"></label>
         <label>上下余白 <input id="padY" type="number" min="0" value="8"></label>
       </div>
+      <div class="hint">カード左下のチェックを2つ以上選んで「チェックを統合」。1フレームを選んで「選択を再分割」すると、その範囲内を透明領域から再認識します。</div>
       <div id="frameList" class="frame-list"></div>
     </section>
 
