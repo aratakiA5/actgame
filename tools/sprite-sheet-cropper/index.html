@@ -11,13 +11,12 @@
 <body>
 <main>
 <h1>スプライトシート正規化ツール</h1>
-<div class="muted">元画像のグリッド境界をドラッグ調整し、必要な16フレームを厳密な4×4・128×128セルへ整列します。</div>
+<div class="muted">元画像のグリッド境界をドラッグ調整し、必要な16フレームを4×4・128×128セルへ比率維持で結合します。</div>
 <section class="panel controls">
   <div class="field"><label>元画像</label><input id="file" type="file" accept="image/png,image/*"></div>
   <div class="field"><label>元の列数</label><input id="cols" type="number" min="1" value="8"></div>
   <div class="field"><label>元の行数</label><input id="rows" type="number" min="1" value="6"></div>
   <button id="apply" class="secondary">等分グリッドに戻す</button>
-  <button id="auto" class="secondary" disabled>選択分を自動整列</button>
   <button id="undo" class="secondary" disabled>1つ戻す</button>
   <button id="clear" class="danger" disabled>選択解除</button>
   <button id="download" disabled>512×512 PNGを保存</button>
@@ -26,35 +25,34 @@
 <section class="workspace">
   <section class="panel">
     <h2>1. 元画像の境界を調整して16フレームを選択</h2>
-    <div class="note"><span class="warn">黄色い縦線・横線を押したままドラッグ</span>すると、列幅・行高を個別に変更できます。ドラッグ中は線からマウスが外れてもそのまま移動できます。セルを出力したい順にクリックしてください。</div>
+    <div class="note"><span class="warn">黄色い縦線・横線を押したままドラッグ</span>して切り出し範囲を調整できます。セルを出力したい順にクリックしてください。</div>
     <div class="canvas-wrap"><div id="stage" class="stage"><canvas id="source"></canvas><div id="overlay" class="overlay"></div></div></div>
   </section>
   <div>
     <section class="panel"><h2>2. 4×4 配置</h2><div id="slots" class="grid16"></div></section>
     <section class="panel">
       <h2>3. 選択フレーム調整</h2>
-      <div class="note">青枠フレームのみ調整します。基準足元は <span class="kbd">X=64 / Y=118</span>。</div>
+      <div class="note">青枠フレームのみ調整します。切り出した画像は<strong>縦横比を維持したまま128×128へ収めます</strong>。余った左右・上下は透明で穴埋めします。</div>
       <div class="edit-grid">
         <div class="field"><label>X補正(px)</label><input id="dx" type="number" step="1" value="0"></div>
         <div class="field"><label>Y補正(px)</label><input id="dy" type="number" step="1" value="0"></div>
         <div class="field"><label>拡大率(%)</label><input id="scale" type="number" min="10" max="400" step="1" value="100"></div>
-        <div class="field"><label>足元Y</label><input id="footY" type="number" min="0" max="127" step="1" value="118"></div>
       </div>
-      <div class="row" style="margin-top:9px"><button id="alignOne" class="secondary" disabled>このフレームを足元自動整列</button><button id="resetOne" class="secondary" disabled>このフレームをリセット</button></div>
+      <div class="row" style="margin-top:9px"><button id="resetOne" class="secondary" disabled>このフレームをリセット</button></div>
     </section>
     <section class="panel output">
       <h2>4. 512×512 出力</h2>
       <canvas id="output" width="512" height="512"></canvas>
-      <div class="note"><span class="ok">固定仕様:</span> 4列×4行 / 1セル128×128 / 128px刻み / 透明背景 / 補間OFF。</div>
+      <div class="note"><span class="ok">固定仕様:</span> 4列×4行 / 1セル128×128 / アスペクト比維持 / セル中央配置 / 余白は透明 / 補間OFF。</div>
     </section>
   </div>
 </section>
 </main>
 <script>
 const $=id=>document.getElementById(id);
-const file=$('file'),colsEl=$('cols'),rowsEl=$('rows'),apply=$('apply'),auto=$('auto'),undo=$('undo'),clear=$('clear'),download=$('download');
+const file=$('file'),colsEl=$('cols'),rowsEl=$('rows'),apply=$('apply'),undo=$('undo'),clear=$('clear'),download=$('download');
 const source=$('source'),sctx=source.getContext('2d',{alpha:true}),overlay=$('overlay'),stage=$('stage'),slots=$('slots'),output=$('output'),octx=output.getContext('2d',{alpha:true});
-const dxEl=$('dx'),dyEl=$('dy'),scaleEl=$('scale'),footYEl=$('footY'),alignOne=$('alignOne'),resetOne=$('resetOne'),status=$('status');
+const dxEl=$('dx'),dyEl=$('dy'),scaleEl=$('scale'),resetOne=$('resetOne'),status=$('status');
 let img=null,cols=8,rows=6,selected=[],active=-1,frameState=[];
 let xCuts=[],yCuts=[],drag=null;
 function evenCuts(size,count){const a=[];for(let i=0;i<=count;i++)a.push(Math.round(i*size/count));return a;}
@@ -65,54 +63,34 @@ apply.onclick=()=>{if(!img)return;cols=Math.max(1,parseInt(colsEl.value)||8);row
 function resetGrid(){xCuts=evenCuts(img.naturalWidth,cols);yCuts=evenCuts(img.naturalHeight,rows);}
 undo.onclick=()=>{selected.pop();frameState.pop();if(active>=selected.length)active=selected.length-1;syncEditor();renderAll();};
 clear.onclick=()=>{selected=[];frameState=[];active=-1;syncEditor();renderAll();};
-auto.onclick=()=>{for(let i=0;i<selected.length;i++)autoAlign(i);syncEditor();renderAll();};
-alignOne.onclick=()=>{if(active>=0){autoAlign(active);syncEditor();renderAll();}};
-resetOne.onclick=()=>{if(active>=0){frameState[active]={dx:0,dy:0,scale:1,footY:118};syncEditor();renderAll();}};
+resetOne.onclick=()=>{if(active>=0){frameState[active]={dx:0,dy:0,scale:1};syncEditor();renderAll();}};
 download.onclick=()=>{if(selected.length!==16)return;const a=document.createElement('a');a.href=output.toDataURL('image/png');a.download='sprite-sheet-4x4-128.png';a.click();};
-[dxEl,dyEl,scaleEl,footYEl].forEach(el=>el.oninput=()=>{if(active<0)return;const st=frameState[active];st.dx=parseInt(dxEl.value)||0;st.dy=parseInt(dyEl.value)||0;st.scale=Math.max(.1,(parseInt(scaleEl.value)||100)/100);st.footY=Math.max(0,Math.min(127,parseInt(footYEl.value)||118));renderAll();});
+[dxEl,dyEl,scaleEl].forEach(el=>el.oninput=()=>{if(active<0)return;const st=frameState[active];st.dx=parseInt(dxEl.value)||0;st.dy=parseInt(dyEl.value)||0;st.scale=Math.max(.1,(parseInt(scaleEl.value)||100)/100);renderAll();});
 function renderSource(){if(!img){source.width=1;source.height=1;overlay.innerHTML='';return;}source.width=img.naturalWidth;source.height=img.naturalHeight;sctx.clearRect(0,0,source.width,source.height);sctx.imageSmoothingEnabled=false;sctx.drawImage(img,0,0);stage.style.width=source.width+'px';stage.style.height=source.height+'px';renderGridOverlay();}
 function renderGridOverlay(){overlay.innerHTML='';for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const i=r*cols+c,d=document.createElement('div');d.className='cell';d.style.left=xCuts[c]+'px';d.style.top=yCuts[r]+'px';d.style.width=(xCuts[c+1]-xCuts[c])+'px';d.style.height=(yCuts[r+1]-yCuts[r])+'px';d.onclick=e=>{e.stopPropagation();selectCell(i)};overlay.appendChild(d);}for(let i=1;i<xCuts.length-1;i++){const l=document.createElement('div');l.className='grid-line v';l.style.left=xCuts[i]+'px';l.dataset.axis='x';l.dataset.index=i;l.onpointerdown=startDrag;overlay.appendChild(l);}for(let i=1;i<yCuts.length-1;i++){const l=document.createElement('div');l.className='grid-line h';l.style.top=yCuts[i]+'px';l.dataset.axis='y';l.dataset.index=i;l.onpointerdown=startDrag;overlay.appendChild(l);}markSelections();}
-function startDrag(e){
-  e.preventDefault();e.stopPropagation();
-  const el=e.currentTarget;
-  drag={axis:el.dataset.axis,index:+el.dataset.index};
-  document.body.style.cursor=drag.axis==='x'?'ew-resize':'ns-resize';
-  window.addEventListener('pointermove',moveDrag);
-  window.addEventListener('pointerup',endDrag);
-  window.addEventListener('pointercancel',endDrag);
-}
-function moveDrag(e){
-  if(!drag||!img)return;
-  e.preventDefault();
-  const rect=stage.getBoundingClientRect();
-  const scaleX=img.naturalWidth/rect.width,scaleY=img.naturalHeight/rect.height;
-  if(drag.axis==='x'){
-    let v=Math.round((e.clientX-rect.left)*scaleX),i=drag.index;
-    v=Math.max(xCuts[i-1]+1,Math.min(xCuts[i+1]-1,v));
-    xCuts[i]=v;
-  }else{
-    let v=Math.round((e.clientY-rect.top)*scaleY),i=drag.index;
-    v=Math.max(yCuts[i-1]+1,Math.min(yCuts[i+1]-1,v));
-    yCuts[i]=v;
-  }
-  renderGridOverlay();renderAll();
-}
-function endDrag(){
-  if(!drag)return;
-  drag=null;
-  document.body.style.cursor='';
-  window.removeEventListener('pointermove',moveDrag);
-  window.removeEventListener('pointerup',endDrag);
-  window.removeEventListener('pointercancel',endDrag);
-}
-function selectCell(i){if(!img||selected.length>=16||selected.includes(i))return;selected.push(i);frameState.push({dx:0,dy:0,scale:1,footY:118});active=selected.length-1;syncEditor();renderAll();}
+function startDrag(e){e.preventDefault();e.stopPropagation();const el=e.currentTarget;drag={axis:el.dataset.axis,index:+el.dataset.index};document.body.style.cursor=drag.axis==='x'?'ew-resize':'ns-resize';window.addEventListener('pointermove',moveDrag);window.addEventListener('pointerup',endDrag);window.addEventListener('pointercancel',endDrag);}
+function moveDrag(e){if(!drag||!img)return;e.preventDefault();const rect=stage.getBoundingClientRect();const scaleX=img.naturalWidth/rect.width,scaleY=img.naturalHeight/rect.height;if(drag.axis==='x'){let v=Math.round((e.clientX-rect.left)*scaleX),i=drag.index;v=Math.max(xCuts[i-1]+1,Math.min(xCuts[i+1]-1,v));xCuts[i]=v;}else{let v=Math.round((e.clientY-rect.top)*scaleY),i=drag.index;v=Math.max(yCuts[i-1]+1,Math.min(yCuts[i+1]-1,v));yCuts[i]=v;}renderGridOverlay();renderAll();}
+function endDrag(){if(!drag)return;drag=null;document.body.style.cursor='';window.removeEventListener('pointermove',moveDrag);window.removeEventListener('pointerup',endDrag);window.removeEventListener('pointercancel',endDrag);}
+function selectCell(i){if(!img||selected.length>=16||selected.includes(i))return;selected.push(i);frameState.push({dx:0,dy:0,scale:1});active=selected.length-1;syncEditor();renderAll();}
 function srcRect(index){const c=index%cols,r=Math.floor(index/cols);return{x:xCuts[c],y:yCuts[r],w:xCuts[c+1]-xCuts[c],h:yCuts[r+1]-yCuts[r]};}
-function alphaBounds(r){const temp=document.createElement('canvas');temp.width=r.w;temp.height=r.h;const t=temp.getContext('2d',{willReadFrequently:true});t.drawImage(img,r.x,r.y,r.w,r.h,0,0,r.w,r.h);const data=t.getImageData(0,0,r.w,r.h).data;let minX=r.w,minY=r.h,maxX=-1,maxY=-1;for(let y=0;y<r.h;y++)for(let x=0;x<r.w;x++){if(data[(y*r.w+x)*4+3]>8){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}}return maxX<0?{minX:0,minY:0,maxX:r.w-1,maxY:r.h-1}:{minX,minY,maxX,maxY};}
-function autoAlign(slot){const r=srcRect(selected[slot]),b=alphaBounds(r),st=frameState[slot];const footX=(b.minX+b.maxX)/2,footY=b.maxY;st.scale=1;st.dx=Math.round(64-footX);st.dy=Math.round(st.footY-footY);}
-function drawFrame(ctx,slot,ox,oy){if(selected[slot]==null)return;const r=srcRect(selected[slot]),st=frameState[slot];ctx.save();ctx.imageSmoothingEnabled=false;const dw=Math.round(r.w*st.scale),dh=Math.round(r.h*st.scale);ctx.drawImage(img,r.x,r.y,r.w,r.h,ox+Math.round(st.dx),oy+Math.round(st.dy),dw,dh);ctx.restore();}
+function drawFrame(ctx,slot,ox,oy){
+  if(selected[slot]==null)return;
+  const r=srcRect(selected[slot]),st=frameState[slot];
+  const fit=Math.min(128/r.w,128/r.h);
+  const finalScale=fit*st.scale;
+  const dw=Math.max(1,Math.round(r.w*finalScale));
+  const dh=Math.max(1,Math.round(r.h*finalScale));
+  const x=ox+Math.round((128-dw)/2)+Math.round(st.dx);
+  const y=oy+Math.round((128-dh)/2)+Math.round(st.dy);
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox,oy,128,128);ctx.clip();
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(img,r.x,r.y,r.w,r.h,x,y,dw,dh);
+  ctx.restore();
+}
 function markSelections(){[...overlay.querySelectorAll('.cell')].forEach((d,i)=>{const p=selected.indexOf(i);d.classList.toggle('selected',p>=0);d.innerHTML=p>=0?`<span class="badge">${p+1}</span>`:'';});}
-function renderAll(){markSelections();[...slots.children].forEach((d,i)=>{d.classList.toggle('active',i===active);const c=d.querySelector('canvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,128,128);ctx.imageSmoothingEnabled=false;drawFrame(ctx,i,0,0);});octx.clearRect(0,0,512,512);octx.imageSmoothingEnabled=false;for(let i=0;i<16;i++)drawFrame(octx,i,(i%4)*128,Math.floor(i/4)*128);undo.disabled=selected.length===0;clear.disabled=selected.length===0;auto.disabled=selected.length===0;download.disabled=selected.length!==16;alignOne.disabled=active<0;resetOne.disabled=active<0;status.textContent=!img?'画像を選択してください。':`元画像: ${img.naturalWidth}×${img.naturalHeight}px / ${cols}列×${rows}行 / 選択: ${selected.length}/16 / 出力: 512×512px`;}
-function syncEditor(){const enabled=active>=0&&frameState[active];[dxEl,dyEl,scaleEl,footYEl].forEach(e=>e.disabled=!enabled);if(!enabled){dxEl.value=0;dyEl.value=0;scaleEl.value=100;footYEl.value=118;return;}const st=frameState[active];dxEl.value=st.dx;dyEl.value=st.dy;scaleEl.value=Math.round(st.scale*100);footYEl.value=st.footY;}
+function renderAll(){markSelections();[...slots.children].forEach((d,i)=>{d.classList.toggle('active',i===active);const c=d.querySelector('canvas'),ctx=c.getContext('2d');ctx.clearRect(0,0,128,128);ctx.imageSmoothingEnabled=false;drawFrame(ctx,i,0,0);});octx.clearRect(0,0,512,512);octx.imageSmoothingEnabled=false;for(let i=0;i<16;i++)drawFrame(octx,i,(i%4)*128,Math.floor(i/4)*128);undo.disabled=selected.length===0;clear.disabled=selected.length===0;download.disabled=selected.length!==16;resetOne.disabled=active<0;status.textContent=!img?'画像を選択してください。':`元画像: ${img.naturalWidth}×${img.naturalHeight}px / ${cols}列×${rows}行 / 選択: ${selected.length}/16 / 出力: 512×512px`;}
+function syncEditor(){const enabled=active>=0&&frameState[active];[dxEl,dyEl,scaleEl].forEach(e=>e.disabled=!enabled);if(!enabled){dxEl.value=0;dyEl.value=0;scaleEl.value=100;return;}const st=frameState[active];dxEl.value=st.dx;dyEl.value=st.dy;scaleEl.value=Math.round(st.scale*100);}
 syncEditor();renderAll();
 </script>
 </body>
