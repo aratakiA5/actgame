@@ -4,14 +4,20 @@ using Microsoft.Xna.Framework.Input;
 
 namespace ActGame.Entities;
 
+public enum PlayerCombatStyle
+{
+    MartialArtist,
+    Swordswoman
+}
+
 public sealed class Player
 {
     private const float MoveSpeed = 260f;
     private const float JumpSpeed = 560f;
     private const float Gravity = 1500f;
-    private const float KickDuration = 0.28f;
+    private const float AttackDuration = 0.32f;
 
-    private float _kickTimer;
+    private float _attackTimer;
     private KeyboardState _previousKeyboard;
 
     public EntityBody Body { get; } = new(
@@ -20,26 +26,53 @@ public sealed class Player
         collisionSize: new Vector2(46, 112),
         collisionOffset: Vector2.Zero);
 
+    public PlayerCombatStyle CombatStyle { get; private set; } = PlayerCombatStyle.MartialArtist;
     public bool FacingRight { get; private set; } = true;
-    public bool IsKicking => _kickTimer > 0f;
+    public bool IsAttacking => _attackTimer > 0f;
     public bool IsGrounded { get; private set; }
     public bool IsMoving => Math.Abs(Body.Velocity.X) > 1f;
     public int HitPoints { get; private set; } = 5;
 
-    public Rectangle KickBounds
+    public Rectangle AttackBounds
     {
         get
         {
-            if (!IsKicking)
+            if (!IsAttacking)
                 return Rectangle.Empty;
 
-            const int width = 64;
-            const int height = 42;
             var body = Body.CollisionBounds;
-            var x = FacingRight ? body.Right : body.Left - width;
-            var y = body.Bottom - 70;
-            return new Rectangle(x, y, width, height);
+
+            if (CombatStyle == PlayerCombatStyle.Swordswoman)
+            {
+                // Rapier thrust: longer and slightly narrower than the fighter's kick.
+                const int width = 92;
+                const int height = 34;
+                var x = FacingRight ? body.Right - 4 : body.Left - width + 4;
+                var y = body.Bottom - 82;
+                return new Rectangle(x, y, width, height);
+            }
+
+            // Martial artist kick.
+            const int kickWidth = 64;
+            const int kickHeight = 42;
+            var kickX = FacingRight ? body.Right : body.Left - kickWidth;
+            var kickY = body.Bottom - 70;
+            return new Rectangle(kickX, kickY, kickWidth, kickHeight);
         }
+    }
+
+    public void ConfigureCharacter(PlayerCombatStyle style)
+    {
+        CombatStyle = style;
+        _attackTimer = 0f;
+
+        Body.VisualSize = style == PlayerCombatStyle.Swordswoman
+            ? new Vector2(150, 150)
+            : new Vector2(128, 128);
+
+        Body.CollisionSize = style == PlayerCombatStyle.Swordswoman
+            ? new Vector2(48, 112)
+            : new Vector2(46, 112);
     }
 
     public void Update(GameTime gameTime, float groundY)
@@ -70,9 +103,9 @@ public sealed class Player
         }
 
         if (Pressed(keyboard, Keys.J))
-            _kickTimer = KickDuration;
+            _attackTimer = AttackDuration;
 
-        _kickTimer = Math.Max(0f, _kickTimer - dt);
+        _attackTimer = Math.Max(0f, _attackTimer - dt);
         Body.Position += Body.Velocity * dt;
         Body.Position = new Vector2(MathHelper.Clamp(Body.Position.X, 30, 1250), Math.Min(Body.Position.Y, groundY));
 
