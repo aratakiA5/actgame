@@ -10,6 +10,8 @@ public sealed class Game1 : Game
     private enum GameScreen { PlayerSelect, Playing }
     private enum PlayerCharacter { PinkFighter, BlondeSwordswoman }
 
+    private readonly record struct GoblinFrame(Rectangle Source, Point FootPivot);
+
     private readonly GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
     private Texture2D _pixel = null!;
@@ -26,34 +28,35 @@ public sealed class Game1 : Game
     private const int SwordswomanRows = 4;
 
     // E001_goblin.png was authored from a 1836x1285 irregular sprite sheet.
-    // Source rectangles are intentionally explicit because the frames are not on an equal grid.
+    // Each frame also stores the goblin's feet/ground anchor inside that frame.
+    // This lets wide sword/slash frames keep the same pixel scale as normal frames.
     private const int GoblinSheetWidth = 1836;
     private const int GoblinSheetHeight = 1285;
 
-    private static readonly Rectangle[] GoblinIdleFrames =
+    private static readonly GoblinFrame[] GoblinIdleFrames =
     {
-        new(56, 58, 196, 191),
-        new(360, 55, 198, 193),
-        new(666, 56, 199, 193),
+        new(new Rectangle(56, 58, 196, 191), new Point(85, 190)),
+        new(new Rectangle(360, 55, 198, 193), new Point(79, 192)),
+        new(new Rectangle(666, 56, 199, 193), new Point(77, 192)),
     };
 
-    private static readonly Rectangle[] GoblinWalkFrames =
+    private static readonly GoblinFrame[] GoblinWalkFrames =
     {
-        new(47, 306, 212, 199),
-        new(351, 303, 217, 202),
-        new(667, 306, 196, 199),
-        new(975, 303, 193, 203),
-        new(1277, 303, 201, 203),
-        new(1582, 304, 202, 202),
+        new(new Rectangle(47, 306, 212, 199), new Point(84, 198)),
+        new(new Rectangle(351, 303, 217, 202), new Point(111, 201)),
+        new(new Rectangle(667, 306, 196, 199), new Point(89, 198)),
+        new(new Rectangle(975, 303, 193, 203), new Point(103, 202)),
+        new(new Rectangle(1277, 303, 201, 203), new Point(83, 202)),
+        new(new Rectangle(1582, 304, 202, 202), new Point(85, 201)),
     };
 
-    private static readonly Rectangle[] GoblinAttackFrames =
+    private static readonly GoblinFrame[] GoblinAttackFrames =
     {
-        new(46, 573, 214, 189),
-        new(343, 580, 233, 182),
-        new(621, 578, 289, 184),
-        new(955, 522, 233, 240),
-        new(1266, 578, 223, 184),
+        new(new Rectangle(46, 573, 214, 189), new Point(85, 188)),
+        new(new Rectangle(343, 580, 233, 182), new Point(102, 181)),
+        new(new Rectangle(621, 578, 289, 184), new Point(101, 183)),
+        new(new Rectangle(955, 522, 233, 240), new Point(97, 239)),
+        new(new Rectangle(1266, 578, 223, 184), new Point(85, 183)),
     };
 
     private GameScreen _screen = GameScreen.PlayerSelect;
@@ -183,6 +186,13 @@ public sealed class Game1 : Game
         return new Rectangle(x0, y0, Math.Max(1, x1 - x0), Math.Max(1, y1 - y0));
     }
 
+    private Vector2 GoblinPivot(GoblinFrame frame, Rectangle actualSource)
+    {
+        var x = frame.FootPivot.X * actualSource.Width / (float)frame.Source.Width;
+        var y = frame.FootPivot.Y * actualSource.Height / (float)frame.Source.Height;
+        return new Vector2(x, y);
+    }
+
     private void DrawPlayerSelect()
     {
         _spriteBatch.Draw(_pixel, new Rectangle(0, 0, 1280, 720), new Color(20, 28, 48));
@@ -258,7 +268,7 @@ public sealed class Game1 : Game
 
     private void DrawEnemy(Enemy enemy)
     {
-        Rectangle[] frames;
+        GoblinFrame[] frames;
         double fps;
 
         if (enemy.IsAttacking)
@@ -278,21 +288,31 @@ public sealed class Game1 : Game
         }
 
         var frameIndex = (int)(enemy.AnimationTime * fps) % frames.Length;
-        var source = GoblinSource(frames[frameIndex]);
+        var frame = frames[frameIndex];
+        var source = GoblinSource(frame.Source);
+        var pivot = GoblinPivot(frame, source);
         var effects = enemy.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
 
-        // Keep each irregular source frame's aspect ratio and anchor it to the enemy's feet.
-        var maxBounds = enemy.Body.VisualBounds;
-        var scale = Math.Min(maxBounds.Width / (float)source.Width, maxBounds.Height / (float)source.Height);
-        var width = Math.Max(1, (int)MathF.Round(source.Width * scale));
-        var height = Math.Max(1, (int)MathF.Round(source.Height * scale));
-        var destination = new Rectangle(
-            (int)MathF.Round(enemy.Body.Position.X - width / 2f),
-            (int)MathF.Round(enemy.Body.Position.Y - height),
-            width,
-            height);
+        // One common scale is derived from the reference idle frame and reused for every frame.
+        // Wide attack/slash frames therefore grow sideways instead of being squeezed into VisualBounds.
+        var referenceSource = GoblinSource(GoblinIdleFrames[0].Source);
+        var commonScale = enemy.Body.VisualSize.Y / referenceSource.Height;
 
-        _spriteBatch.Draw(_enemySprite, destination, source, Color.White, 0f, Vector2.Zero, effects, 0f);
+        // When the texture is flipped, mirror the X pivot as well so the same world-space foot anchor is kept.
+        var origin = pivot;
+        if (!enemy.FacingRight)
+            origin.X = source.Width - pivot.X;
+
+        _spriteBatch.Draw(
+            _enemySprite,
+            enemy.Body.Position,
+            source,
+            Color.White,
+            0f,
+            origin,
+            commonScale,
+            effects,
+            0f);
     }
 
     private bool IsNewKeyPress(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && !_previousKeyboard.IsKeyDown(key);
