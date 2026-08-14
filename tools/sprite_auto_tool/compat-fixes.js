@@ -1,7 +1,23 @@
 frameCrop=function(f){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(f.w));c.height=Math.max(1,Math.round(f.h));const cctx=c.getContext('2d',{willReadFrequently:true});cctx.imageSmoothingEnabled=false;cctx.drawImage(img,f.x,f.y,f.w,f.h,0,0,c.width,c.height);return c;};
 els.list.addEventListener('click',e=>{if(!(e.ctrlKey||e.metaKey))return;const card=e.target.closest('.frame-card');if(!card)return;const i=Number(card.dataset.frameIndex);if(!Number.isInteger(i)||i<0||i>=frames.length)return;e.preventDefault();e.stopImmediatePropagation();toggleMergeTarget(i)},true);
 mergeBtn.addEventListener('click',e=>{cleanMergeTargets();if(mergeTargets.length!==2)return;e.preventDefault();e.stopImmediatePropagation();const [a,b]=mergeTargets.slice().sort((x,y)=>x-y),fa=frames[a],fb=frames[b],slotA=layoutSlots.indexOf(fa),slotB=layoutSlots.indexOf(fb),keepSlot=Math.min(slotA<0?Infinity:slotA,slotB<0?Infinity:slotB),merged=union(fa,fb);frames.splice(b,1);frames.splice(a,1,merged);if(Number.isFinite(keepSlot)){layoutSlots=layoutSlots.filter(x=>x!==fa&&x!==fb);layoutSlots.splice(Math.min(keepSlot,layoutSlots.length),0,merged)}selected=a;mergeTargets=[];renderSource();renderFrames();updateActionButtons();drawPreview(selected);setStatus(`#${a+1} と #${b+1} を結合しました。配置位置は維持しています。`)},true);
-function detectMaxRowColumns(){if(!frames.length)return;const sorted=frames.map(f=>({f,cy:f.y+f.h/2})).sort((a,b)=>a.cy-b.cy||a.f.x-b.f.x);const rows=[];for(const item of sorted){let row=rows.find(r=>Math.abs(r.cy-item.cy)<=Math.max(8,Math.min(r.avgH,item.f.h)*0.45));if(!row){row={cy:item.cy,avgH:item.f.h,items:[]};rows.push(row)}row.items.push(item.f);row.cy=row.items.reduce((s,f)=>s+f.y+f.h/2,0)/row.items.length;row.avgH=row.items.reduce((s,f)=>s+f.h,0)/row.items.length}const maxCols=Math.max(1,...rows.map(r=>r.items.length));$('layoutColumns').value=maxCols;$('columns').value=maxCols;$('layoutColumns').dispatchEvent(new Event('input'));setStatus(`${frames.length}フレームを認識しました。最大 ${maxCols} 個並ぶ行を検出したため、列数を ${maxCols} に設定しました。`)}
+function detectMaxRowColumns(){if(!frames.length)return;const sorted=frames.map(f=>({f,cy:f.y+f.h/2})).sort((a,b)=>a.cy-b.cy||a.f.x-b.f.x);const rows=[];for(const item of sorted){let row=rows.find(r=>Math.abs(r.cy-item.cy)<=Math.max(8,Math.min(r.avgH,item.f.h)*0.45));if(!row){row={cy:item.cy,avgH:item.f.h,items:[]};rows.push(row)}row.items.push(item.f);row.cy=row.items.reduce((s,f)=>s+f.y+f.h/2,0)/row.items.length;row.avgH=row.items.reduce((s,f)=>s+f.h,0)/row.items.length}const maxCols=Math.max(1,...rows.map(r=>r.items.length));$('layoutColumns').value=maxCols;$('columns').value=maxCols;$('layoutColumns').dispatchEvent(new Event('input'));setStatus(`${frames.length}フレームを認識しました。最大 ${maxCols} 個並ぶ行を検出したため、出力列数を ${maxCols} に設定しました。`)}
 els.detect.addEventListener('click',()=>setTimeout(detectMaxRowColumns,0));
 function previewOrderFromLayout(){if(typeof syncLayoutSlots==='function')syncLayoutSlots();const slots=Array.isArray(layoutSlots)?layoutSlots:frames;const order=slots.filter(Boolean).map(f=>frames.indexOf(f)).filter(i=>i>=0);return order.length?order:frames.map((_,i)=>i)}
 els.play.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();stopAnim();const order=previewOrderFromLayout();if(!order.length)return;let a=Math.max(0,+$('startFrame').value-1),b=Math.min(order.length-1,+$('endFrame').value-1);if(b<a)[a,b]=[b,a];let pos=a;drawPreview(order[pos]);animTimer=setInterval(()=>{pos=pos>=b?a:pos+1;drawPreview(order[pos])},1000/Math.max(1,+$('fps').value));setStatus(`配置順でアニメーション再生中: ${a+1}～${b+1} / ${order.length}フレーム`)},true);
+const baseDrawPreview=drawPreview;
+drawPreview=function(i){
+  if(!img||!frames.length){baseDrawPreview(i);return}
+  const m=metrics(),n=normalizedFrame(Math.max(0,Math.min(i,frames.length-1)),m),scale=Math.max(.1,+$('previewScale').value||1),pad=24;
+  const drawW=Math.max(1,Math.round(n.width*scale)),drawH=Math.max(1,Math.round(n.height*scale));
+  const area=els.preview.parentElement;
+  const minW=Math.max(320,area?.clientWidth||420),minH=Math.max(220,area?.clientHeight||300);
+  els.preview.width=Math.max(minW,drawW+pad*2);
+  els.preview.height=Math.max(minH,drawH+pad*2);
+  const ctx=els.preview.getContext('2d');ctx.imageSmoothingEnabled=false;ctx.clearRect(0,0,els.preview.width,els.preview.height);
+  const x=Math.round((els.preview.width-drawW)/2),y=Math.round((els.preview.height-drawH)/2);
+  ctx.drawImage(n,x,y,drawW,drawH);
+  ctx.strokeStyle='rgba(255,255,255,.25)';
+  const base=Math.min(n.height-m.padY-1,m.padY+m.maxAbove-1+(+$('footOffset').value));
+  const baseline=y+base*scale+.5;ctx.beginPath();ctx.moveTo(0,baseline);ctx.lineTo(els.preview.width,baseline);ctx.stroke();
+};
