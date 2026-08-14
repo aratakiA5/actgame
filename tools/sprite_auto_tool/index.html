@@ -17,7 +17,7 @@
     <label class="file-btn">画像を開く<input id="fileInput" type="file" accept="image/png,image/webp,image/jpeg" /></label>
   </header>
 
-  <main class="workspace">
+  <main class="workspace" id="workspace">
     <section class="panel source-panel">
       <div class="panel-head">
         <h2>1. 元画像・自動認識</h2>
@@ -33,6 +33,8 @@
       <div class="hint">青枠＝認識フレーム。クリックで通常選択。Ctrl/Cmd+クリックで結合したい2枠を選択。ドラッグで移動、四隅で範囲調整、Shift+ドラッグで新規範囲。</div>
     </section>
 
+    <div id="splitterV" class="splitter splitter-v" title="左右の幅をドラッグで調整"></div>
+
     <section class="panel frames-panel">
       <div class="panel-head"><h2>2. フレーム編集</h2><div class="row compact"><button id="mergeBtn" disabled>2つを結合</button><button id="deleteBtn" disabled>選択削除</button></div></div>
       <button id="sortBtn" type="button" hidden disabled></button>
@@ -42,6 +44,8 @@
       <div class="hint">ドラッグで配置を入れ替えできます。空白セルも配置の一部として保持され、スプライトシート出力時は透明セルになります。</div>
       <div id="frameList" class="frame-list"></div>
     </section>
+
+    <div id="splitterH" class="splitter splitter-h" title="2と3の高さをドラッグで調整"></div>
 
     <section class="panel preview-panel">
       <div class="panel-head"><h2>3. アニメーション・出力</h2><div class="row compact"><button id="playBtn" disabled>▶ 再生</button><button id="stopBtn" disabled>■ 停止</button></div></div>
@@ -58,5 +62,6 @@
   <script src="manual-merge.js"></script>
   <script src="layout-grid.js"></script>
   <script src="compat-fixes.js"></script>
+  <script src="resize-layout.js"></script>
 </body>
 </html>
