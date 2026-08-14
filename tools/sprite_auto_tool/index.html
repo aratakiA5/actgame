@@ -34,7 +34,8 @@
     </section>
 
     <section class="panel frames-panel">
-      <div class="panel-head"><h2>2. フレーム編集</h2><div class="row compact"><button id="sortBtn" disabled>左→右 / 上→下</button><button id="mergeBtn" disabled>2つを結合</button><button id="deleteBtn" disabled>選択削除</button></div></div>
+      <div class="panel-head"><h2>2. フレーム編集</h2><div class="row compact"><button id="mergeBtn" disabled>2つを結合</button><button id="deleteBtn" disabled>選択削除</button></div></div>
+      <button id="sortBtn" type="button" hidden disabled></button>
       <div class="row controls-wide"><label>出力列数 <input id="layoutColumns" type="number" min="1" max="32" value="8"></label><button id="insertBlankBtn" disabled>選択位置の前に空白</button><button id="appendBlankBtn" disabled>末尾に空白</button><button id="removeBlankBtn" disabled>空白を削除</button></div>
       <input id="columns" type="hidden" value="8">
       <div class="row controls-wide"><label><input id="autoFeet" type="checkbox" checked> 足元を自動揃え</label><label>足元補正 <input id="footOffset" type="number" value="0"></label><label>左右余白 <input id="padX" type="number" min="0" value="8"></label><label>上下余白 <input id="padY" type="number" min="0" value="8"></label></div>
