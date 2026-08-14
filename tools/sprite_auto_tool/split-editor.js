@@ -22,7 +22,7 @@
       <aside class="split-side">
         <div class="split-preview-card"><h3>A プレビュー</h3><div class="split-preview-wrap"><canvas id="splitPreviewA"></canvas></div></div>
         <div class="split-preview-card"><h3>B プレビュー</h3><div class="split-preview-wrap"><canvas id="splitPreviewB"></canvas></div></div>
-        <div class="split-help">画像上をドラッグして分割線を描きます。上/下モードでは線より上がA、下がBです。左/右モードでは線より左がA、右がBです。線の端は自動的に画像端まで延長されます。補完幅の範囲は両方に残ります。</div>
+        <div class="split-help">画像の外側の余白から分割線を描き始められます。左右分割では上の余白から入り、下の余白へ抜けるように描くと端の残骸を防ぎやすくなります。上/下モードでは線より上がA、下がB、左/右モードでは線より左がA、右がBです。補完幅の範囲は両方に残ります。</div>
       </aside>
     </div>`;
   document.body.appendChild(root);
@@ -31,6 +31,7 @@
   const prevA=$('splitPreviewA'),prevB=$('splitPreviewB');
   const dir=$('splitDirection'),overlap=$('splitOverlap'),zoom=$('splitZoom');
   const clearBtn=$('splitClear'),cancelBtn=$('splitCancel'),applyBtn=$('splitApply');
+  const DRAW_PAD=24;
   let editingIndex=-1,baseFrame=null,source=null,points=[],drawing=false,lastSplit=null;
 
   const originalFrameCrop=frameCrop;
@@ -47,25 +48,35 @@
 
   function edgeExtendedPoints(){
     if(!source||points.length<2)return points;
-    const p=points.map(v=>({x:v.x,y:v.y}));
     if(dir.value==='lr'){
-      const ordered=p.slice().sort((a,b)=>a.y-b.y);
+      const ordered=points.map(v=>({x:v.x,y:v.y})).sort((a,b)=>a.y-b.y);
       const first=ordered[0],last=ordered[ordered.length-1];
-      ordered.unshift({x:first.x,y:0});
-      ordered.push({x:last.x,y:source.height-1});
+      if(first.y>0)ordered.unshift({x:first.x,y:0});
+      if(last.y<source.height-1)ordered.push({x:last.x,y:source.height-1});
       return ordered;
     }
-    const ordered=p.slice().sort((a,b)=>a.x-b.x);
+    const ordered=points.map(v=>({x:v.x,y:v.y})).sort((a,b)=>a.x-b.x);
     const first=ordered[0],last=ordered[ordered.length-1];
-    ordered.unshift({x:0,y:first.y});
-    ordered.push({x:source.width-1,y:last.y});
+    if(first.x>0)ordered.unshift({x:0,y:first.y});
+    if(last.x<source.width-1)ordered.push({x:source.width-1,y:last.y});
     return ordered;
   }
   function drawWork(){
-    if(!source)return;const z=Math.max(1,+zoom.value||1);work.width=source.width*z;work.height=source.height*z;wctx.imageSmoothingEnabled=false;wctx.clearRect(0,0,work.width,work.height);wctx.drawImage(source,0,0,work.width,work.height);
-    if(points.length){const line=edgeExtendedPoints();wctx.save();wctx.strokeStyle='#ff4d67';wctx.lineWidth=Math.max(2,z*.7);wctx.lineJoin='round';wctx.lineCap='round';wctx.beginPath();wctx.moveTo(line[0].x*z,line[0].y*z);for(let i=1;i<line.length;i++)wctx.lineTo(line[i].x*z,line[i].y*z);wctx.stroke();wctx.restore()}
+    if(!source)return;
+    const z=Math.max(1,+zoom.value||1),pad=DRAW_PAD;
+    work.width=(source.width+pad*2)*z;work.height=(source.height+pad*2)*z;
+    wctx.imageSmoothingEnabled=false;wctx.clearRect(0,0,work.width,work.height);
+    wctx.fillStyle='rgba(80,100,130,.18)';wctx.fillRect(0,0,work.width,work.height);
+    wctx.drawImage(source,pad*z,pad*z,source.width*z,source.height*z);
+    wctx.save();wctx.strokeStyle='rgba(120,160,210,.75)';wctx.lineWidth=1;wctx.strokeRect(pad*z+.5,pad*z+.5,source.width*z-1,source.height*z-1);wctx.restore();
+    if(points.length){const line=edgeExtendedPoints();wctx.save();wctx.strokeStyle='#ff4d67';wctx.lineWidth=Math.max(2,z*.7);wctx.lineJoin='round';wctx.lineCap='round';wctx.beginPath();wctx.moveTo((line[0].x+pad)*z,(line[0].y+pad)*z);for(let i=1;i<line.length;i++)wctx.lineTo((line[i].x+pad)*z,(line[i].y+pad)*z);wctx.stroke();wctx.restore()}
   }
-  function pointerPos(e){const r=work.getBoundingClientRect(),z=Math.max(1,+zoom.value||1);return{x:Math.max(0,Math.min(source.width-1,(e.clientX-r.left)*work.width/r.width/z)),y:Math.max(0,Math.min(source.height-1,(e.clientY-r.top)*work.height/r.height/z))}}
+  function pointerPos(e){
+    const r=work.getBoundingClientRect(),z=Math.max(1,+zoom.value||1),pad=DRAW_PAD;
+    const canvasX=(e.clientX-r.left)*work.width/r.width/z-pad;
+    const canvasY=(e.clientY-r.top)*work.height/r.height/z-pad;
+    return{x:Math.max(-pad,Math.min(source.width-1+pad,canvasX)),y:Math.max(-pad,Math.min(source.height-1+pad,canvasY))};
+  }
   work.addEventListener('pointerdown',e=>{if(!source)return;drawing=true;points=[pointerPos(e)];work.setPointerCapture?.(e.pointerId);drawWork()});
   work.addEventListener('pointermove',e=>{if(!drawing)return;const p=pointerPos(e),q=points[points.length-1];if(!q||Math.hypot(p.x-q.x,p.y-q.y)>=.5){points.push(p);drawWork()}});
   work.addEventListener('pointerup',e=>{if(!drawing)return;drawing=false;const p=pointerPos(e);points.push(p);refreshSplit()});
