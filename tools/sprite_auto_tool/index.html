@@ -21,10 +21,7 @@
     <section class="panel source-panel">
       <div class="panel-head">
         <h2>1. 元画像・自動認識</h2>
-        <div class="row compact">
-          <button id="detectBtn" disabled>自動認識</button>
-          <button id="clearBtn" disabled>認識解除</button>
-        </div>
+        <div class="row compact"><button id="detectBtn" disabled>自動認識</button><button id="clearBtn" disabled>認識解除</button></div>
       </div>
       <div class="controls-grid">
         <label>透明判定 α <input id="alphaThreshold" type="range" min="1" max="254" value="16"><span id="alphaValue">16</span></label>
@@ -37,26 +34,9 @@
     </section>
 
     <section class="panel frames-panel">
-      <div class="panel-head">
-        <h2>2. フレーム編集</h2>
-        <div class="row compact">
-          <button id="sortBtn" disabled>左→右 / 上→下</button>
-          <button id="mergeBtn" disabled>2つを結合</button>
-          <button id="deleteBtn" disabled>選択削除</button>
-        </div>
-      </div>
-      <div class="row controls-wide">
-        <label>列数 <input id="layoutColumns" type="number" min="1" max="32" value="8"></label>
-        <button id="insertBlankBtn" disabled>選択位置の前に空白</button>
-        <button id="appendBlankBtn" disabled>末尾に空白</button>
-        <button id="removeBlankBtn" disabled>空白を削除</button>
-      </div>
-      <div class="row controls-wide">
-        <label><input id="autoFeet" type="checkbox" checked> 足元を自動揃え</label>
-        <label>足元補正 <input id="footOffset" type="number" value="0"></label>
-        <label>左右余白 <input id="padX" type="number" min="0" value="8"></label>
-        <label>上下余白 <input id="padY" type="number" min="0" value="8"></label>
-      </div>
+      <div class="panel-head"><h2>2. フレーム編集</h2><div class="row compact"><button id="sortBtn" disabled>左→右 / 上→下</button><button id="mergeBtn" disabled>2つを結合</button><button id="deleteBtn" disabled>選択削除</button></div></div>
+      <div class="row controls-wide"><label>列数 <input id="layoutColumns" type="number" min="1" max="32" value="8"></label><button id="insertBlankBtn" disabled>選択位置の前に空白</button><button id="appendBlankBtn" disabled>末尾に空白</button><button id="removeBlankBtn" disabled>空白を削除</button></div>
+      <div class="row controls-wide"><label><input id="autoFeet" type="checkbox" checked> 足元を自動揃え</label><label>足元補正 <input id="footOffset" type="number" value="0"></label><label>左右余白 <input id="padX" type="number" min="0" value="8"></label><label>上下余白 <input id="padY" type="number" min="0" value="8"></label></div>
       <div class="hint">ドラッグで配置を入れ替えできます。空白セルも配置の一部として保持され、スプライトシート出力時は透明セルになります。</div>
       <div id="frameList" class="frame-list"></div>
     </section>
@@ -64,19 +44,9 @@
     <section class="panel preview-panel">
       <div class="panel-head"><h2>3. アニメーション・出力</h2><div class="row compact"><button id="playBtn" disabled>▶ 再生</button><button id="stopBtn" disabled>■ 停止</button></div></div>
       <div class="preview-area checker"><canvas id="previewCanvas" width="420" height="420"></canvas></div>
-      <div class="controls-grid preview-controls">
-        <label>FPS <input id="fps" type="number" min="1" max="60" value="8"></label>
-        <label>開始 <input id="startFrame" type="number" min="1" value="1"></label>
-        <label>終了 <input id="endFrame" type="number" min="1" value="1"></label>
-        <label>表示倍率 <input id="previewScale" type="number" min="0.1" step="0.1" value="2"></label>
-      </div>
+      <div class="controls-grid preview-controls"><label>FPS <input id="fps" type="number" min="1" max="60" value="8"></label><label>開始 <input id="startFrame" type="number" min="1" value="1"></label><label>終了 <input id="endFrame" type="number" min="1" value="1"></label><label>表示倍率 <input id="previewScale" type="number" min="0.1" step="0.1" value="2"></label></div>
       <hr>
-      <div class="controls-grid preview-controls">
-        <label>固定セル幅 <input id="cellW" type="number" min="0" value="0"><small>0=自動</small></label>
-        <label>固定セル高 <input id="cellH" type="number" min="0" value="0"><small>0=自動</small></label>
-        <label>出力列数 <input id="columns" type="number" min="1" value="8"></label>
-        <label>出力倍率 <input id="exportScale" type="number" min="0.1" step="0.1" value="1"></label>
-      </div>
+      <div class="controls-grid preview-controls"><label>固定セル幅 <input id="cellW" type="number" min="0" value="0"><small>0=自動</small></label><label>固定セル高 <input id="cellH" type="number" min="0" value="0"><small>0=自動</small></label><label>出力列数 <input id="columns" type="number" min="1" value="8"></label><label>出力倍率 <input id="exportScale" type="number" min="0.1" step="0.1" value="1"></label></div>
       <div class="row export-row"><button id="exportSheetBtn" disabled>スプライトシートPNG出力</button><button id="exportFramesBtn" disabled>個別PNG出力</button></div>
       <div id="status" class="status">画像を読み込んでください。</div>
     </section>
@@ -85,5 +55,6 @@
   <script src="app.js"></script>
   <script src="manual-merge.js"></script>
   <script src="layout-grid.js"></script>
+  <script src="compat-fixes.js"></script>
 </body>
 </html>
