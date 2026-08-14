@@ -6,6 +6,7 @@
   <title>不規則スプライトシート整形ツール</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="manual-merge.css" />
+  <link rel="stylesheet" href="layout-grid.css" />
 </head>
 <body>
   <header class="topbar">
@@ -31,9 +32,7 @@
         <label>部品結合距離 <input id="mergeDistance" type="number" min="0" value="18"></label>
         <label>余白 <input id="boxPadding" type="number" min="0" value="2"></label>
       </div>
-      <div class="canvas-wrap checker source-wrap">
-        <canvas id="sourceCanvas"></canvas>
-      </div>
+      <div class="canvas-wrap checker source-wrap"><canvas id="sourceCanvas"></canvas></div>
       <div class="hint">青枠＝認識フレーム。クリックで通常選択。Ctrl/Cmd+クリックで結合したい2枠を選択。ドラッグで移動、四隅で範囲調整、Shift+ドラッグで新規範囲。</div>
     </section>
 
@@ -47,26 +46,24 @@
         </div>
       </div>
       <div class="row controls-wide">
+        <label>列数 <input id="layoutColumns" type="number" min="1" max="32" value="8"></label>
+        <button id="insertBlankBtn" disabled>選択位置の前に空白</button>
+        <button id="appendBlankBtn" disabled>末尾に空白</button>
+        <button id="removeBlankBtn" disabled>空白を削除</button>
+      </div>
+      <div class="row controls-wide">
         <label><input id="autoFeet" type="checkbox" checked> 足元を自動揃え</label>
         <label>足元補正 <input id="footOffset" type="number" value="0"></label>
         <label>左右余白 <input id="padX" type="number" min="0" value="8"></label>
         <label>上下余白 <input id="padY" type="number" min="0" value="8"></label>
       </div>
-      <div class="hint">元画像またはフレーム一覧でCtrl/Cmd+クリックし、緑色になった2つを「2つを結合」で1つの範囲にまとめます。</div>
+      <div class="hint">ドラッグで配置を入れ替えできます。空白セルも配置の一部として保持され、スプライトシート出力時は透明セルになります。</div>
       <div id="frameList" class="frame-list"></div>
     </section>
 
     <section class="panel preview-panel">
-      <div class="panel-head">
-        <h2>3. アニメーション・出力</h2>
-        <div class="row compact">
-          <button id="playBtn" disabled>▶ 再生</button>
-          <button id="stopBtn" disabled>■ 停止</button>
-        </div>
-      </div>
-      <div class="preview-area checker">
-        <canvas id="previewCanvas" width="420" height="420"></canvas>
-      </div>
+      <div class="panel-head"><h2>3. アニメーション・出力</h2><div class="row compact"><button id="playBtn" disabled>▶ 再生</button><button id="stopBtn" disabled>■ 停止</button></div></div>
+      <div class="preview-area checker"><canvas id="previewCanvas" width="420" height="420"></canvas></div>
       <div class="controls-grid preview-controls">
         <label>FPS <input id="fps" type="number" min="1" max="60" value="8"></label>
         <label>開始 <input id="startFrame" type="number" min="1" value="1"></label>
@@ -77,18 +74,16 @@
       <div class="controls-grid preview-controls">
         <label>固定セル幅 <input id="cellW" type="number" min="0" value="0"><small>0=自動</small></label>
         <label>固定セル高 <input id="cellH" type="number" min="0" value="0"><small>0=自動</small></label>
-        <label>列数 <input id="columns" type="number" min="1" value="8"></label>
+        <label>出力列数 <input id="columns" type="number" min="1" value="8"></label>
         <label>出力倍率 <input id="exportScale" type="number" min="0.1" step="0.1" value="1"></label>
       </div>
-      <div class="row export-row">
-        <button id="exportSheetBtn" disabled>スプライトシートPNG出力</button>
-        <button id="exportFramesBtn" disabled>個別PNG出力</button>
-      </div>
+      <div class="row export-row"><button id="exportSheetBtn" disabled>スプライトシートPNG出力</button><button id="exportFramesBtn" disabled>個別PNG出力</button></div>
       <div id="status" class="status">画像を読み込んでください。</div>
     </section>
   </main>
 
   <script src="app.js"></script>
   <script src="manual-merge.js"></script>
+  <script src="layout-grid.js"></script>
 </body>
 </html>
