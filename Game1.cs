@@ -25,6 +25,37 @@ public sealed class Game1 : Game
     private const int SwordswomanColumns = 4;
     private const int SwordswomanRows = 4;
 
+    // E001_goblin.png was authored from a 1836x1285 irregular sprite sheet.
+    // Source rectangles are intentionally explicit because the frames are not on an equal grid.
+    private const int GoblinSheetWidth = 1836;
+    private const int GoblinSheetHeight = 1285;
+
+    private static readonly Rectangle[] GoblinIdleFrames =
+    {
+        new(56, 58, 196, 191),
+        new(360, 55, 198, 193),
+        new(666, 56, 199, 193),
+    };
+
+    private static readonly Rectangle[] GoblinWalkFrames =
+    {
+        new(47, 306, 212, 199),
+        new(351, 303, 217, 202),
+        new(667, 306, 196, 199),
+        new(975, 303, 193, 203),
+        new(1277, 303, 201, 203),
+        new(1582, 304, 202, 202),
+    };
+
+    private static readonly Rectangle[] GoblinAttackFrames =
+    {
+        new(46, 573, 214, 189),
+        new(343, 580, 233, 182),
+        new(621, 578, 289, 184),
+        new(955, 522, 233, 240),
+        new(1266, 578, 223, 184),
+    };
+
     private GameScreen _screen = GameScreen.PlayerSelect;
     private PlayerCharacter _selectedCharacter = PlayerCharacter.PinkFighter;
     private KeyboardState _previousKeyboard;
@@ -39,9 +70,9 @@ public sealed class Game1 : Game
 
     protected override void Initialize()
     {
-        _enemies.Add(new Enemy(new Vector2(650, GroundY), new Vector2(86, 120), new Vector2(46, 104), 75));
-        _enemies.Add(new Enemy(new Vector2(900, GroundY), new Vector2(112, 156), new Vector2(60, 136), 45));
-        _enemies.Add(new Enemy(new Vector2(1120, GroundY), new Vector2(72, 100), new Vector2(40, 88), 90));
+        _enemies.Add(new Enemy(new Vector2(650, GroundY), new Vector2(150, 132), new Vector2(58, 106), 75));
+        _enemies.Add(new Enemy(new Vector2(900, GroundY), new Vector2(150, 132), new Vector2(58, 106), 55));
+        _enemies.Add(new Enemy(new Vector2(1120, GroundY), new Vector2(150, 132), new Vector2(58, 106), 90));
         base.Initialize();
     }
 
@@ -54,7 +85,7 @@ public sealed class Game1 : Game
         // Use the original user-provided sheets directly. They are never resized or rewritten on disk.
         _fighterSprite = LoadPng(Path.Combine("Content", "Player", "001_FightingGirl.png"));
         _swordswomanSprite = LoadPng(Path.Combine("Content", "Player", "002_swordswoman.png"));
-        _enemySprite = LoadPng(Path.Combine("Content", "Enemies", "blonde_swordswoman.png"));
+        _enemySprite = LoadPng(Path.Combine("Content", "Enemies", "E001_goblin.png"));
     }
 
     private Texture2D LoadPng(string relativePath)
@@ -142,6 +173,16 @@ public sealed class Game1 : Game
     private Rectangle FighterSource(int column, int row) => SheetSource(_fighterSprite, FighterColumns, FighterRows, column, row);
     private Rectangle SwordswomanSource(int column, int row) => SheetSource(_swordswomanSprite, SwordswomanColumns, SwordswomanRows, column, row);
 
+    private Rectangle GoblinSource(Rectangle authored)
+    {
+        // Scale authored source coordinates when the PNG has been exported at the same layout but another resolution.
+        var x0 = authored.Left * _enemySprite.Width / GoblinSheetWidth;
+        var x1 = authored.Right * _enemySprite.Width / GoblinSheetWidth;
+        var y0 = authored.Top * _enemySprite.Height / GoblinSheetHeight;
+        var y1 = authored.Bottom * _enemySprite.Height / GoblinSheetHeight;
+        return new Rectangle(x0, y0, Math.Max(1, x1 - x0), Math.Max(1, y1 - y0));
+    }
+
     private void DrawPlayerSelect()
     {
         _spriteBatch.Draw(_pixel, new Rectangle(0, 0, 1280, 720), new Color(20, 28, 48));
@@ -217,11 +258,41 @@ public sealed class Game1 : Game
 
     private void DrawEnemy(Enemy enemy)
     {
-        var facesRight = _player.Body.Position.X >= enemy.Body.Position.X;
-        var effects = facesRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
-        var frame = (int)(_animationTime * 8.0) % 4;
-        const int cell = 48;
-        _spriteBatch.Draw(_enemySprite, enemy.Body.VisualBounds, new Rectangle(frame * cell, cell, cell, cell), Color.White, 0f, Vector2.Zero, effects, 0f);
+        Rectangle[] frames;
+        double fps;
+
+        if (enemy.IsAttacking)
+        {
+            frames = GoblinAttackFrames;
+            fps = 9.0;
+        }
+        else if (enemy.IsMoving)
+        {
+            frames = GoblinWalkFrames;
+            fps = 8.0;
+        }
+        else
+        {
+            frames = GoblinIdleFrames;
+            fps = 4.0;
+        }
+
+        var frameIndex = (int)(enemy.AnimationTime * fps) % frames.Length;
+        var source = GoblinSource(frames[frameIndex]);
+        var effects = enemy.FacingRight ? SpriteEffects.None : SpriteEffects.FlipHorizontally;
+
+        // Keep each irregular source frame's aspect ratio and anchor it to the enemy's feet.
+        var maxBounds = enemy.Body.VisualBounds;
+        var scale = Math.Min(maxBounds.Width / (float)source.Width, maxBounds.Height / (float)source.Height);
+        var width = Math.Max(1, (int)MathF.Round(source.Width * scale));
+        var height = Math.Max(1, (int)MathF.Round(source.Height * scale));
+        var destination = new Rectangle(
+            (int)MathF.Round(enemy.Body.Position.X - width / 2f),
+            (int)MathF.Round(enemy.Body.Position.Y - height),
+            width,
+            height);
+
+        _spriteBatch.Draw(_enemySprite, destination, source, Color.White, 0f, Vector2.Zero, effects, 0f);
     }
 
     private bool IsNewKeyPress(KeyboardState keyboard, Keys key) => keyboard.IsKeyDown(key) && !_previousKeyboard.IsKeyDown(key);
